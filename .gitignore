@@ -1,0 +1,29 @@
+# This repository becomes PUBLIC at submission. The match data must never enter its history --
+# not even in a commit that is later reverted. scripts/check_no_data.sh enforces this in the
+# pre-commit hook and in CI.
+
+# competition data bundle and anything derived from it frame by frame
+data/*
+!data/README.md
+*.mp4
+*_atd.txt
+*_atd.xml
+*_homography.csv
+*_smart_tagging.xml
+
+# our own outputs: a submission is a full set of labels for the match
+submissions/
+*.npz
+*.parquet
+
+# public sample game (re-downloadable; kept out to keep the repo small)
+devdata/
+
+# environment
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.DS_Store
+.idea/
+.vscode/

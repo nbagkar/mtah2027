@@ -41,3 +41,4 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-11 | 292b142 | default.json (v0.1) | `160d12523e5271c11570349f937e2825d3aedb63161f8e669721c9f31cbee368` | not run; validates OK, X exactly on the 40,462 ungraded frames |
 | 2026-11-12 | 5a0d60f | default.json (v0.2) | `18937a8f3088ad9dd4c53d9e5612fdadf6e6e255acaa579ae1c7e3a6bc1a21ca` | not run; validates OK, X exactly on the 40,462 ungraded frames |
 | 2026-11-12 | 402cf23 | default.json (v0.3) | `ed0aed2f43f0237abba2c99a4a22ee9bdd10cb7df1828f95394ae9388d4ac1bd` | not run; validates OK, X exactly on the 40,462 ungraded frames, home/away check OK |
+| 2026-11-12 | 2bbea96 | default.json (v0.4) | `f5faa2e2126a627142974445a8b2abfb071ccdabedccf2c4a0edcf7b2e2ed9f0` | not run; validates OK, X exactly on the 40,462 ungraded frames, home/away check OK; D share 24.8% → 32.0% |

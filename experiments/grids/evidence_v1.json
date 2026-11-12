@@ -1,0 +1,7 @@
+{
+  "features.ball_interp_max_gap": [12, 25, 50],
+  "possessor.control_radius_m": [2.0, 3.0, 4.5],
+  "possessor.fast_ball": [8.0, 15.0, 25.0],
+  "segment.cost_team_switch": [5, 10, 20],
+  "segment.cost_to_dead": [4]
+}

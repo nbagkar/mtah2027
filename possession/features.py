@@ -90,6 +90,27 @@ def compute(trk, cfg, fps=25):
     margin = f["out_margin_m"]
     ball_out = ball_ok & ((bx < -margin) | (bx > L + margin) | (by < -margin) | (by > W + margin))
 
+    # Carry: the nearest player moving *with* the ball (dribbling / receiving). Relative speed of
+    # ball and nearest player, both measured over the same lag so jitter cancels similarly.
+    T = len(bx)
+    dist_nan = np.where(np.isnan(dist), np.inf, dist)
+    nearest = np.argmin(dist_nan, axis=1)
+    rows = np.arange(T)
+    nearest_d = dist_nan[rows, nearest]
+    nearest_team = trk.team[rows, nearest].astype(np.float64)
+    nearest_team[~np.isfinite(nearest_d)] = np.nan
+    bvx = np.full(T, np.nan)
+    bvy = np.full(T, np.nan)
+    bvx[lag // 2: lag // 2 + T - lag] = (bx[lag:] - bx[:-lag]) * fps / lag
+    bvy[lag // 2: lag // 2 + T - lag] = (by[lag:] - by[:-lag]) * fps / lag
+    pvx_n = np.full(T, np.nan)
+    pvy_n = np.full(T, np.nan)
+    sel = nearest[lag // 2: lag // 2 + T - lag]
+    r = rows[: T - lag]
+    pvx_n[lag // 2: lag // 2 + T - lag] = (trk.px[r + lag, sel] - trk.px[r, sel]) * fps / lag
+    pvy_n[lag // 2: lag // 2 + T - lag] = (trk.py[r + lag, sel] - trk.py[r, sel]) * fps / lag
+    rel_speed = np.sqrt((bvx - pvx_n) ** 2 + (bvy - pvy_n) ** 2)
+
     n_players = np.sum(~np.isnan(trk.px), axis=1).astype(np.float64)
     missing_run = run_length_of(~ball_seen).astype(np.float64)
 
@@ -103,4 +124,7 @@ def compute(trk, cfg, fps=25):
         "ball_out": ball_out.astype(np.float64),
         "n_players": n_players,
         "ball_missing_run": missing_run,
+        "nearest_d": np.where(np.isfinite(nearest_d), nearest_d, np.nan),
+        "nearest_team": nearest_team,
+        "carry_rel_speed": rel_speed,
     }

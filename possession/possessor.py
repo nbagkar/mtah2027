@@ -27,4 +27,16 @@ def home_logodds(feat, cfg):
                                   0.0, 1.0), 0.0)
     bs = feat["ball_speed"]
     slow = np.where(np.isnan(bs), 0.5, np.clip(1.0 - bs / c["fast_ball"], 0.0, 1.0))
-    return c["w_margin"] * margin * near * slow
+    out = c["w_margin"] * margin * near * slow
+
+    # Carry: the nearest player is close AND moving with the ball -> that team controls it.
+    # Off by default (w_carry 0) until the dev set says otherwise.
+    w = c.get("w_carry", 0.0)
+    if w:
+        rel = feat["carry_rel_speed"]
+        close = feat["nearest_d"] < c["carry_radius_m"]
+        together = rel < c["carry_rel_speed"]
+        sign = np.where(feat["nearest_team"] == 0, 1.0, -1.0)
+        carrying = np.nan_to_num(close & together, nan=0.0).astype(float)
+        out = out + w * sign * carrying
+    return out

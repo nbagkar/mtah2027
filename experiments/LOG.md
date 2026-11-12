@@ -34,6 +34,10 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | validation | stress test, dev games re-degraded with ball loss x0.5 / x1.6 / 2.4 s bursts and position jitter 0.07 / 0.30 / 0.45 m: the v0.4 setting beats v0.3 and the gated variant under every one (e.g. jitter 0.30 m: 0.503 vs 0.373 / 0.404). At 0.45 m everything falls to ~0.38 | — | — | the cliff is in parameter space, not in the noise; real-ATD jitter is the open risk |
 | 2026-11-12 | dead ball | **v0.4**: `w_slow` 1.0 → 0.15, `w_long_missing` 0.5 → 0.25 | **0.5274 [0.531 0.528 0.523]** | **0.6306** | adopted: +0.074 / +0.079 / +0.050 per game, clean +0.053 |
 
+| 2026-11-12 | validation | v0.4 under player-position jitter 0.07 / 0.15 / 0.30 / 0.45 / 0.60 m (dev games re-degraded, one seed each): 0.529 / 0.536 / 0.503 / 0.384 / 0.372. At ~0.7 m/s of fake speed per 0.15 m of jitter, standing players stop looking still and the stoppage cue goes quiet | — | — | the real ATD's jitter is unknown; our 0.15 m is an assumption |
+| 2026-11-12 | features | speed lag 10 → 25 frames, or positions smoothed (±6-25 frames) before the 10-frame lag, with slow threshold 0.6 / 1.0, scored on the dev set and on 0.30 m jitter | dev 0.512-0.523 | 0.606-0.632 | all flatten the jitter curve; smoothing is a new code path for the same effect, so not kept |
+| 2026-11-12 | features | **v0.5**: `motion_lag` 10 → 25 (jitter 0.07 / 0.15 / 0.30 / 0.45 / 0.60 m: 0.525 / 0.529 / 0.533 / 0.529 / 0.514) | **0.5227 [0.522 0.520 0.527]** | **0.6300** | **adopted against the every-game rule, by team decision**: −0.009 / −0.008 / +0.004 on the dev set buys +0.15 if the real tracking is as noisy as 0.45 m |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

@@ -32,40 +32,102 @@ def transition_costs(cfg):
     return t
 
 
-def viterbi(e, cost):
+def viterbi(e, cost, min_dead=1):
     """Max-score path. e: (T, 3) scores, cost: (3, 3) penalty for moving i -> j.
 
+    min_dead: a dead spell must last at least this many frames. Without it the decoder can
+    hand the ball from one team to the other through a 1-frame D for cost_to_dead +
+    cost_from_dead, which caps the effective team-switch cost and litters the output with
+    fake stoppages (real ones under 1 s are ~1% of the dev set's). Implemented as a
+    duration chain: entering D at frame s commits frames s..s+K-1 to D (scored with a prefix
+    sum of the D emissions); only the "matured" D state can stay or leave. min_dead=1 is the
+    plain 3-state Viterbi.
+
     Scalar Python on purpose: with 3 states, per-step numpy calls cost more than the arithmetic,
-    and this version is ~10x faster while staying dependency-free and bit-for-bit deterministic.
-    Ties break toward the lower state index (H, then A, then D), always the same way.
+    and this stays dependency-free and bit-for-bit deterministic. Ties break toward H, then A,
+    then D, always the same way.
     """
     T = len(e)
     if T == 0:
         return np.empty(0, np.int8)
+    K = max(1, int(min_dead))
     c = cost.tolist()
     rows = e.tolist()
-    s0, s1, s2 = rows[0]
-    back = bytearray(3 * T)
+    ninf = float("-inf")
+    eD = [r[2] for r in rows]
+    if K > 1:
+        P = [0.0] * (T + 1)
+        for t in range(T):
+            P[t + 1] = P[t] + eD[t]
+    # ent[s]: best score just before frame s for a path that enters D at s; ent_src[s]: 0=H,
+    # 1=A, 3=path starts in D at frame 0.
+    ent = [ninf] * T
+    ent_src = bytearray(T)
+    ent[0], ent_src[0] = 0.0, 3
+    back = bytearray(3 * T)   # per frame: predecessor of H, of A, and for D 2=stay / 4=chain
+    s0, s1 = rows[0][0], rows[0][1]
+    s2 = rows[0][2] if K == 1 else ninf
+    if K == 1:
+        back[2] = 4
     for t in range(1, T):
         e0, e1, e2 = rows[t]
-        best = []
-        for j in range(3):
-            a, b, d = s0 - c[0][j], s1 - c[1][j], s2 - c[2][j]
-            if a >= b and a >= d:
-                best.append((a, 0))
-            elif b >= d:
-                best.append((b, 1))
-            else:
-                best.append((d, 2))
+        # into H
+        a, b, d = s0, s1 - c[1][0], s2 - c[2][0]
+        if a >= b and a >= d:
+            n0, p0 = a, 0
+        elif b >= d:
+            n0, p0 = b, 1
+        else:
+            n0, p0 = d, 2
+        # into A
+        a, b, d = s0 - c[0][1], s1, s2 - c[2][1]
+        if a >= b and a >= d:
+            n1, p1 = a, 0
+        elif b >= d:
+            n1, p1 = b, 1
+        else:
+            n1, p1 = d, 2
+        # entering D at t
+        a, b = s0 - c[0][2], s1 - c[1][2]
+        if a >= b:
+            ent[t], ent_src[t] = a, 0
+        else:
+            ent[t], ent_src[t] = b, 1
+        # matured D at t: stay, or a chain that entered at t-K+1 and just completed
+        stay = s2 + e2
+        s = t - K + 1
+        if s >= 0:
+            chain = ent[s] + (e2 if K == 1 else P[t + 1] - P[s])
+        else:
+            chain = ninf
+        if chain >= stay:
+            n2, p2 = chain, 4
+        else:
+            n2, p2 = stay, 2
         k = 3 * t
-        back[k], back[k + 1], back[k + 2] = best[0][1], best[1][1], best[2][1]
-        s0, s1, s2 = best[0][0] + e0, best[1][0] + e1, best[2][0] + e2
+        back[k], back[k + 1], back[k + 2] = p0, p1, p2
+        s0, s1, s2 = n0 + e0, n1 + e1, n2
     path = np.empty(T, np.int8)
     cur = 0 if (s0 >= s1 and s0 >= s2) else (1 if s1 >= s2 else 2)
-    path[-1] = cur
-    for t in range(T - 1, 0, -1):
-        cur = back[3 * t + cur]
-        path[t - 1] = cur
+    t = T - 1
+    while t >= 0:
+        if cur == 2:
+            if back[3 * t + 2] == 2:
+                path[t] = 2
+                t -= 1
+                continue
+            s = t - K + 1
+            path[s:t + 1] = 2
+            src = ent_src[s]
+            if src == 3:
+                break
+            cur, t = src, s - 1
+        else:
+            path[t] = cur
+            if t == 0:
+                break
+            cur = back[3 * t + cur]
+            t -= 1
     return path
 
 
@@ -76,5 +138,5 @@ def decode(home_lo, dead_lo, cfg, blocks):
     cost = transition_costs(cfg)
     e = emissions(home_lo, dead_lo)
     for a, b in blocks:
-        labels[a:b] = LABELS[viterbi(e[a:b], cost)]
+        labels[a:b] = LABELS[viterbi(e[a:b], cost, cfg["segment"].get("min_dead_frames", 1))]
     return labels

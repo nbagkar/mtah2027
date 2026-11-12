@@ -129,3 +129,26 @@ def test_home_team_check_catches_a_swap(tmp_path):
     m = _meta_with_teams(tmp_path, "Athletic Club", "FC Barcelona")
     with pytest.raises(SystemExit, match="HOME/AWAY CHECK FAILED"):
         io.check_home_team(m, "Barcelona", ("Athletic", "Atletic"))
+
+
+def test_viterbi_min_dead_matches_brute_force():
+    import itertools
+    rng = np.random.default_rng(7)
+
+    def total(path, e, c):
+        return sum(e[t, path[t]] for t in range(len(path))) - \
+            sum(c[path[t - 1], path[t]] for t in range(1, len(path)))
+
+    def dead_runs_ok(path, k):
+        runs = [(s, len(list(g))) for s, g in itertools.groupby(path)]
+        return all(n >= k for s, n in runs if s == segment.D)
+
+    for _ in range(100):
+        T, k = int(rng.integers(1, 8)), int(rng.integers(1, 5))
+        e = rng.normal(0, 3, (T, 3))
+        c = rng.uniform(0, 6, (3, 3))
+        np.fill_diagonal(c, 0)
+        feasible = [p for p in itertools.product(range(3), repeat=T) if dead_runs_ok(p, k)]
+        got = tuple(segment.viterbi(e, c, k))
+        assert dead_runs_ok(got, k)
+        assert abs(total(got, e, c) - max(total(p, e, c) for p in feasible)) < 1e-9

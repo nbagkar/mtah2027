@@ -1,0 +1,7 @@
+{
+  "possessor.w_width": [0.0, 0.05, 0.1, 0.25, 0.5],
+  "possessor.shape_only_ball_missing": [true],
+  "segment.cost_team_switch": [10],
+  "segment.cost_to_dead": [4, 8],
+  "segment.cost_from_dead": [4, 8]
+}

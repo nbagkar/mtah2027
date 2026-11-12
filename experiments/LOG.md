@@ -18,6 +18,11 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | validation | re-baseline on 3 games: v0.1 | 0.4323 [0.428 0.418 0.451] | 0.5631 | games 1-2 were never used to tune v0.1, so this is a held-out check, and it holds |
 | 2026-11-12 | segmenter | **v0.2**: control radius 3 → 2 m, fast-ball cutoff 15 → 25 m/s | **0.4522 [0.455 0.436 0.466]** | **0.5777** | adopted: better in every game and on clean. `experiments/grids/recheck_3games.json` |
 | 2026-11-12 | segmenter | carry signal on top of v0.2 | 0.4531 [0.455 0.436 0.469] | 0.5751 | not adopted: +0.001, flat in two games, clean drops |
+| 2026-11-12 | possessor | measured ball-free team-shape signals on the clean dev games: the wider team has the ball 81-83% of the time in every game (77-78% while the ball is invisible). Collective movement toward goal reaches 58-65%, team length 61-69% | — | — | width is the only strong one |
+| 2026-11-12 | possessor | width + movement as evidence on every frame, weight ≥ 1 (`experiments/grids/shape_v1.json`) | 0.38-0.40 | 0.52-0.56 | **rejected**: a smooth signal present on every frame adds up over a possession and drowns the ball |
+| 2026-11-12 | segment | (from the same sweep) a direct team-switch cost above cost_to_dead + cost_from_dead = 8 changes nothing: the decoder switches through a one-frame D instead | — | — | worth fixing in the segmenter |
+| 2026-11-12 | possessor | **v0.3**: width evidence only while the ball is invisible, weight 0.05 (`experiments/grids/shape_v2.json`) | **0.4598 [0.457 0.449 0.473]** | **0.5774** | adopted: up +0.003 / +0.013 / +0.007, clean flat (−0.0003) |
+| 2026-11-12 | possessor | same at weight 0.1 | 0.4615 [0.455 0.448 0.481] | 0.5761 | not adopted: game 1 +0.0007 is flat and clean drops |
 
 ## Submission files
 

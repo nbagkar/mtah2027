@@ -4,7 +4,6 @@ Positive = home, negative = away, 0 = no opinion (ball unseen, in flight, nobody
 segmenter turns this into possessions; this module only weighs evidence frame by frame.
 
 Ideas not yet in v0:
-  - team shape when the ball is missing: the team in possession spreads out and pushes up.
   - Smart Tagging phases (Build Up / Progression / ... carry a Team tag) as a soft prior.
   - pass detection: ball leaves player of team T and arrives at a player of team T.
 """
@@ -39,4 +38,17 @@ def home_logodds(feat, cfg):
         sign = np.where(feat["nearest_team"] == 0, 1.0, -1.0)
         carrying = np.nan_to_num(close & together, nan=0.0).astype(float)
         out = out + w * sign * carrying
+
+    # Team shape: ball-free, so it also speaks while the ball is invisible (41% of frames).
+    # Saturated with tanh so one wide moment can't outvote the ball. Off by default.
+    # Width and movement are smooth and present on every frame, so even a modest weight adds
+    # up over a possession and drowns the ball. With shape_only_ball_missing they speak only
+    # where the ball (after gap filling) is unknown.
+    gate = (feat["ball_ok"] == 0) if c.get("shape_only_ball_missing", True) else 1.0
+    ww = c.get("w_width", 0.0)
+    if ww:
+        out = out + gate * ww * np.tanh(np.nan_to_num(feat["width_diff"]) / c["width_scale_m"])
+    wm = c.get("w_move", 0.0)
+    if wm:
+        out = out + gate * wm * np.tanh(np.nan_to_num(feat["move"]) / c["move_scale"])
     return out

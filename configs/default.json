@@ -26,9 +26,9 @@
     "w_ball_out": 4.0,
     "slow_speed": 1.0,
     "slow_scale": 0.5,
-    "w_slow": 1.0,
+    "w_slow": 0.15,
     "missing_run_frames": 75,
-    "w_long_missing": 0.5,
+    "w_long_missing": 0.25,
     "moving_ball": 3.0,
     "w_moving_ball": 1.0
   },

@@ -6,7 +6,7 @@ video frame (`H` / `A` / `D` / `X`) for FC Barcelona – Athletic Club, ranked o
 **Team members: read [TEAM.md](TEAM.md) first.** It has the rules that can get us disqualified,
 who owns what, and the schedule.
 
-## Approach (v0.3)
+## Approach (v0.4)
 
 ```
 ATD tracking ──> features ──┬─> possessor: log-odds HOME vs AWAY per frame
@@ -21,7 +21,9 @@ ATD tracking ──> features ──┬─> possessor: log-odds HOME vs AWAY per
 - **Possessor** — nearest player of each team to the ball (ball gaps ≤ 0.5 s interpolated),
   trusted only when someone is within 2 m and the ball isn't moving faster than 25 m/s. While
   the ball is invisible, a weak ball-free cue speaks instead: the team in possession plays wider.
-- **Dead ball** — ball outside the pitch, players nearly static, long ball absence, ball moving.
+- **Dead ball** — ball outside the pitch, ball moving (alive), long ball absence, and players
+  nearly static. The last is only a light nudge: weighted heavily, it calls stoppages during slow
+  build-up play whenever the ball is invisible.
 - **Segmenter** — Viterbi decoding. Its switch penalties are what turn flickering frame evidence
   into whole possessions, which is what `spellF1` counts.
 
@@ -34,7 +36,8 @@ competition ATD. None was chosen on the competition match. See [devset/build.py]
 | official baseline `smooth50` | 0.4271 | 0.2773 | 0.297 / 0.280 / 0.256 |
 | ours, v0.1 | 0.5631 | 0.4323 | 0.428 / 0.418 / 0.451 |
 | ours, v0.2 | 0.5777 | 0.4522 | 0.455 / 0.436 / 0.466 |
-| **ours, v0.3** | **0.5774** | **0.4598** | **0.457 / 0.449 / 0.473** |
+| ours, v0.3 | 0.5774 | 0.4598 | 0.457 / 0.449 / 0.473 |
+| **ours, v0.4** | **0.6306** | **0.5274** | **0.531 / 0.528 / 0.523** |
 
 ## Reproduce
 

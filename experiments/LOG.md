@@ -26,6 +26,14 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | segment | measured the one-frame-D shortcut: ~55 predicted dead spells per game last ≤ 5 frames and sit between two different teams; real stoppages under 1 s are 0-1% of GT | — | — | |
 | 2026-11-12 | segment | new `segment.min_dead_frames` (a dead spell must last ≥ K frames, exact duration-chain Viterbi) swept with switch 5-40 and to/from dead 2-4 (`experiments/grids/min_dead_v1.json`, `min_dead_v2.json`) | best with K > 1: 0.4575 [0.458 0.444 0.471] | 0.5695 | **rejected**: every K > 1 scores below v0.3, and once the shortcut is closed a switch cost above 10 hurts too. The cap at 8 was never binding: the best switch cost is ~8-10 either way. Option stays in, default 1 = identical output |
 
+| 2026-11-12 | segmenter | hand-over diagnosis, redone: switches are found slightly *early* (median −0.2 to −0.7 s), not late. On degraded tracking, frames with the ball visible are 90% right; with it invisible (45% of live frames) 67-75%, the errors split between false D (9-20%) and wrong team (13-17%). The 3-6 s possessions are the biggest recoverable group | — | — | the earlier "2.7 s late" figure does not reproduce |
+| 2026-11-12 | dead ball | 80th-percentile player speed instead of the median (`experiments/grids/deadball_v1.json`) | below the median at matching settings | — | rejected, option removed (it was also 14x slower) |
+| 2026-11-12 | dead ball | `w_slow` 1.0 → 0.5 (`deadball_v1.json`) | 0.5081 [0.506 0.506 0.513] | 0.6147 | first sign the slow-players term was far too strong |
+| 2026-11-12 | dead ball | down to `w_slow` 0 (`deadball_v2.json`, `deadball_v3.json`) | 0.40-0.53 | 0.53-0.64 | cliffs: neighbouring settings differ by up to 0.08, because the running-players term and the long-missing term nearly cancel while the ball is missing. With `w_slow` 0, 0.445 |
+| 2026-11-12 | dead ball | long-missing term gated on slow players (`deadball_v4.json`, option `long_missing_needs_slow`) | 0.44-0.51, best 0.5112 | 0.56-0.63 | smooth, but below the ungated peak; code in, off |
+| 2026-11-12 | validation | stress test, dev games re-degraded with ball loss x0.5 / x1.6 / 2.4 s bursts and position jitter 0.07 / 0.30 / 0.45 m: the v0.4 setting beats v0.3 and the gated variant under every one (e.g. jitter 0.30 m: 0.503 vs 0.373 / 0.404). At 0.45 m everything falls to ~0.38 | — | — | the cliff is in parameter space, not in the noise; real-ATD jitter is the open risk |
+| 2026-11-12 | dead ball | **v0.4**: `w_slow` 1.0 → 0.15, `w_long_missing` 0.5 → 0.25 | **0.5274 [0.531 0.528 0.523]** | **0.6306** | adopted: +0.074 / +0.079 / +0.050 per game, clean +0.053 |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

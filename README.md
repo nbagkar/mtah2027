@@ -31,14 +31,14 @@ All parameters were chosen on a **dev set built from other matches**: Metrica's 
 sample games, with labels derived from their event data and tracking degraded to look like the
 competition ATD. None was chosen on the competition match. See [devset/build.py](devset/build.py).
 
-| spellF1 on the dev set (3 games) | clean tracking | degraded (mean of 3 seeds × 3 games) | degraded, per game |
+| spellF1 on the dev set (3 games) | clean tracking | degraded (mean of seeds × 3 games; 6 seeds from v0.3 on, 3 above) | degraded, per game |
 |---|---|---|---|
 | official baseline `smooth50` | 0.4271 | 0.2773 | 0.297 / 0.280 / 0.256 |
 | ours, v0.1 | 0.5631 | 0.4323 | 0.428 / 0.418 / 0.451 |
 | ours, v0.2 | 0.5777 | 0.4522 | 0.455 / 0.436 / 0.466 |
-| ours, v0.3 | 0.5774 | 0.4598 | 0.457 / 0.449 / 0.473 |
-| ours, v0.4 | 0.6306 | 0.5274 | 0.531 / 0.528 / 0.523 |
-| **ours, v0.5** | **0.6300** | **0.5227** | **0.522 / 0.520 / 0.527** |
+| ours, v0.3 | 0.5774 | 0.4601 | 0.454 / 0.447 / 0.479 |
+| ours, v0.4 | 0.6306 | 0.5266 | 0.528 / 0.524 / 0.528 |
+| **ours, v0.5** | **0.6300** | **0.5234** | **0.523 / 0.520 / 0.528** |
 
 ## Reproduce
 

@@ -1,7 +1,7 @@
 # Experiment log
 
 One line per change that touched results. Dev numbers are `spellF1` from `scripts/score_dev.py`
-(degraded mean ± seed spread / clean). Never record a choice made on the public 5 minutes.
+(degraded mean ± seed spread / clean; 6 seeds per game from 2026-11-12, 3 before). Never record a choice made on the public 5 minutes.
 From 2026-11-12 the dev set is three games, and the bracketed numbers are degraded scores for games 1 / 2 / 3.
 
 | date | who | change | dev deg_mean | dev clean | notes |
@@ -37,6 +37,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | validation | v0.4 under player-position jitter 0.07 / 0.15 / 0.30 / 0.45 / 0.60 m (dev games re-degraded, one seed each): 0.529 / 0.536 / 0.503 / 0.384 / 0.372. At ~0.7 m/s of fake speed per 0.15 m of jitter, standing players stop looking still and the stoppage cue goes quiet | — | — | the real ATD's jitter is unknown; our 0.15 m is an assumption |
 | 2026-11-12 | features | speed lag 10 → 25 frames, or positions smoothed (±6-25 frames) before the 10-frame lag, with slow threshold 0.6 / 1.0, scored on the dev set and on 0.30 m jitter | dev 0.512-0.523 | 0.606-0.632 | all flatten the jitter curve; smoothing is a new code path for the same effect, so not kept |
 | 2026-11-12 | features | **v0.5**: `motion_lag` 10 → 25 (jitter 0.07 / 0.15 / 0.30 / 0.45 / 0.60 m: 0.525 / 0.529 / 0.533 / 0.529 / 0.514) | **0.5227 [0.522 0.520 0.527]** | **0.6300** | **adopted against the every-game rule, by team decision**: −0.009 / −0.008 / +0.004 on the dev set buys +0.15 if the real tracking is as noisy as 0.45 m |
+
+| 2026-11-12 | validation | dev set grows from 3 to 6 degraded seeds per game (`DEGRADE_SEEDS`); seeds 0-2 are byte-identical in effect (v0.3 still 0.4598 on them). On 6 seeds: v0.3 0.4601 [0.454 0.447 0.479], v0.4 0.5266 [0.528 0.524 0.528], v0.5 **0.5234 [0.523 0.520 0.528]**, clean unchanged | — | — | one game's seeds span up to 0.06, but the standard error of a game's 6-seed mean is ~0.006: treat per-game changes under ~0.01 as noise. Every number above this line is on 3 seeds; scoring is now ~2x slower |
 
 ## Submission files
 

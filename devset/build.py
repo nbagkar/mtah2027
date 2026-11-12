@@ -45,7 +45,7 @@ METRICA_PITCH = (105.0, 68.0)  # the sample games' metadata pitch; games 1-2 shi
 STOPPAGE_TYPES = {"BALL OUT", "FAULT RECEIVED"}
 CONTROL_TYPES = {"PASS", "CARRY", "RECOVERY", "SET PIECE", "SHOT"}
 
-DEGRADE_SEEDS = (0, 1, 2)
+DEGRADE_SEEDS = tuple(range(6))  # 3 -> 6 on 2026-11-12: one game spread 0.05 across 3 seeds
 TARGET_BALL_MISSING = 0.41
 
 

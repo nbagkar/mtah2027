@@ -1,5 +1,5 @@
 PY ?= .venv/bin/python
-TEAM ?= CHANGE_ME
+TEAM ?= BAP PM&T
 
 setup:
 	python3 -m venv .venv
@@ -21,7 +21,7 @@ test:
 	$(PY) -W ignore -m pytest -q
 
 submission:
-	$(PY) -W ignore scripts/make_submission.py --team $(TEAM)
+	$(PY) -W ignore scripts/make_submission.py --team '$(TEAM)'
 
 guard:
 	bash scripts/check_no_data.sh all

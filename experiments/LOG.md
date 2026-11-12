@@ -14,3 +14,4 @@ One line per change that touched results. Dev numbers are `spellF1` from `script
 
 | date | commit | config | sha256 | public-window sanity |
 |---|---|---|---|---|
+| 2026-11-11 | 292b142 | default.json (v0.1) | `160d12523e5271c11570349f937e2825d3aedb63161f8e669721c9f31cbee368` | not run; validates OK, X exactly on the 40,462 ungraded frames |

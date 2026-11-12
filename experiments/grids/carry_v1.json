@@ -1,0 +1,9 @@
+{
+  "possessor.control_radius_m": [2.0],
+  "possessor.fast_ball": [25.0],
+  "possessor.w_carry": [0.0, 1.0, 3.0, 6.0],
+  "possessor.carry_radius_m": [1.0, 2.0],
+  "possessor.carry_rel_speed": [1.5, 3.0],
+  "segment.cost_team_switch": [10, 20],
+  "segment.cost_to_dead": [4]
+}

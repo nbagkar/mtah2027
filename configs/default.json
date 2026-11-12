@@ -11,7 +11,10 @@
     "control_radius_m": 3.0,
     "margin_cap_m": 5.0,
     "fast_ball": 15.0,
-    "w_margin": 2.5
+    "w_margin": 2.5,
+    "w_carry": 0.0,
+    "carry_radius_m": 1.5,
+    "carry_rel_speed": 2.0
   },
   "deadball": {
     "w_ball_out": 4.0,

@@ -51,7 +51,46 @@ def run_length_of(mask):
     return out
 
 
-def compute(trk, cfg, fps=25):
+def _team_mean(v, mask):
+    w = mask & ~np.isnan(v)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(w, v, 0.0).sum(1) / w.sum(1)
+
+
+def _team_std(v, mask):
+    mu = _team_mean(v, mask)
+    w = mask & ~np.isnan(v)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.sqrt(np.where(w, (v - mu[:, None]) ** 2, 0.0).sum(1) / w.sum(1))
+
+
+def team_shape(trk, blocks, smooth, lag, fps=25):
+    """Ball-free evidence, from the players alone.
+
+    width_diff: home width minus away width (std of y, metres). The team in possession spreads
+        out and the defending team stays compact. On the three dev games the wider team has the
+        ball 81-83% of the time.
+    move: collective x-velocity of all players toward the goal home attacks (m/s). When a team
+        advances, all 22 players drift toward the defending team's goal. Weaker (58-65%).
+    Attack direction per half: the side whose centroid sits further toward +x defends +x.
+    """
+    T = len(trk.bx)
+    home, away = trk.team == 0, trk.team == 1
+    width = rolling_mean(_team_std(trk.py, home) - _team_std(trk.py, away), smooth)
+    hx, ax = _team_mean(trk.px, home), _team_mean(trk.px, away)
+    allx = _team_mean(trk.px, home | away)
+    vx = np.full(T, np.nan)
+    vx[lag // 2: lag // 2 + T - lag] = (allx[lag:] - allx[:-lag]) * fps / lag
+    vx = rolling_mean(vx, smooth)
+    direction = np.zeros(T)
+    for a, b in blocks or [(0, T)]:
+        with np.errstate(all="ignore"):
+            d = np.nanmedian(ax[a:b] - hx[a:b])
+        direction[a:b] = np.sign(d) if np.isfinite(d) else 0.0
+    return width, vx * direction
+
+
+def compute(trk, cfg, fps=25, blocks=None):
     f = cfg["features"]
     L, W = trk.pitch
     ball_seen = ~np.isnan(trk.bx)
@@ -112,6 +151,7 @@ def compute(trk, cfg, fps=25):
     rel_speed = np.sqrt((bvx - pvx_n) ** 2 + (bvy - pvy_n) ** 2)
 
     n_players = np.sum(~np.isnan(trk.px), axis=1).astype(np.float64)
+    width_diff, move = team_shape(trk, blocks, f.get("shape_smooth", 25), lag, fps)
     missing_run = run_length_of(~ball_seen).astype(np.float64)
 
     return {
@@ -127,4 +167,6 @@ def compute(trk, cfg, fps=25):
         "nearest_d": np.where(np.isfinite(nearest_d), nearest_d, np.nan),
         "nearest_team": nearest_team,
         "carry_rel_speed": rel_speed,
+        "width_diff": width_diff,
+        "move": move,
     }

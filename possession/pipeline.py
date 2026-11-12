@@ -21,7 +21,7 @@ def load_config(path=None, overrides=None):
 
 
 def predict(trk, cfg, blocks, return_parts=False):
-    feat = features.compute(trk, cfg)
+    feat = features.compute(trk, cfg, blocks=blocks)
     home = possessor.home_logodds(feat, cfg)
     dead = deadball.dead_logodds(feat, cfg)
     labels = segment.decode(home, dead, cfg, blocks)

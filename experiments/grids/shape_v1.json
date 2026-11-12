@@ -1,0 +1,6 @@
+{
+  "possessor.w_width": [0.0, 1.0, 2.0, 4.0],
+  "possessor.w_move": [0.0, 0.5],
+  "segment.cost_team_switch": [10, 20, 40],
+  "segment.cost_to_dead": [4]
+}

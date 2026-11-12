@@ -27,6 +27,14 @@ mechanically into per-frame H/A/D labels (`devset/build.py`), and its tracking w
 match the competition ATD (ball missing on ~41% of played frames, in bursts that are more likely in
 crowds and in flight; player dropouts; position jitter).
 
+Dev data source and acknowledgement: Metrica Sports sample data,
+https://github.com/metrica-sports/sample-data. It is used for validation and tuning only, as
+its README asks: responsibly, and with this acknowledgement.
+
+Per the organisers' clarification of 2026-11-11: no parameter was trained, fitted, calibrated
+or tuned on the competition match's ground truth or video, and our output was never checked
+against the video.
+
 ## 4. Possession rules implemented
 
 - Loose and contested balls: possession stays with the last team in control. The switch penalty

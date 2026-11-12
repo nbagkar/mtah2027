@@ -3,21 +3,36 @@
 Deadline **Tue Nov 17, 23:59 CET** (17:59 New York). We submit by **Tue 12:00 CET** and keep the rest of
 the day as buffer. Scored on `spellF1` on the private full match; floor to beat is 0.2433.
 
-## Five non-negotiables (each one can disqualify us)
+## Non-negotiables (each one can disqualify us)
+
+The organisers' clarification email (received 2026-11-11) overrides everything else, including
+the challenge repo's docs. These rules follow it.
 
 1. **No match data in git, ever.** The repo goes public at submission and history is forever.
    Run `scripts/install_hooks.sh` once after cloning; CI runs the same check on every push.
-2. **No match data in any cloud LLM.** The terms forbid uploading the videos, tracking, tagging or
-   *any extract* to ChatGPT / Claude / Gemini / Copilot chat. Code, error messages and aggregate
-   scores are fine; frames, rows, screenshots and plots of the match are not. Local models are fine.
-3. **No hand labels and no frame-specific constants on the match.** Watching the video to get ideas
-   is fine. Writing down "the second half kicks off at frame N" and hard-coding it is not — detect
-   it with code.
-4. **Never choose between versions on the public 5 minutes.** It's 17 possessions; it picks the wrong
-   answer even for the official baseline. Decisions come from `scripts/score_dev.py` (another game).
-   `make_submission.py --sanity-public` exists only to catch alignment bugs.
-5. **The final file must regenerate byte-for-byte from the repo.** Pinned deps, no randomness
+2. **No match data in any AI service.** That covers ChatGPT, Claude, Gemini, Copilot chat and any
+   other hosted model, and the videos, tracking, tagging, homography and *any extract* of them.
+   Code, error messages and our own pass/fail results are fine. Rows, frames, screenshots and
+   plots of the match are not. When you ask an AI for help, paste the code, not the data.
+3. **Every tuned or trained number comes from external data only.** Fitting, calibrating or
+   tuning on the possession ground truth (public 5 minutes included) or on the video is banned.
+   So is "training" on the competition match in any form. Parameters are chosen by
+   `scripts/sweep.py` / `scripts/score_dev.py` on the dev set (other games), full stop.
+4. **Never check our output against the video.** Watching the video and inspecting the data to
+   understand *what counts as possession* is allowed. Putting our labels next to the footage to
+   see where we're wrong is not, and neither is any frame-specific constant ("the second half
+   kicks off at frame N"). Detect such things with code.
+5. **No hand labels or human-made data about the match**, from us or anyone else (event data,
+   corrected tracking, annotations).
+6. **Only datasets we have the rights to use.** The dev set is Metrica's public sample data; its
+   README asks for responsible use and acknowledgement, which the technical document gives.
+7. **The final file must regenerate byte-for-byte from the repo.** Pinned deps, no randomness
    without a fixed seed, sha256 recorded in `experiments/LOG.md`.
+
+Allowed, per the same email: automatic checks that use only the provided data (e.g. "does the
+file validate", "are frames aligned"); the video, tracking, smart tagging and homography as
+*inputs*; and publishing intermediate files. If an idea sits near a line, email the organisers
+before building it.
 
 ## Roles
 
@@ -30,7 +45,7 @@ that touch their file.
 | 2 | **Dead ball** | `possession/deadball.py` | Smart Tagging SET PIECES as restart anchors; restart geometry (ball still on a line/corner/centre spot); kickoff detection; ball out of bounds from the homography |
 | 3 | **Possessor** | `possession/possessor.py`, `possession/features.py` | control = same player near the ball for N frames; pass detection (ball leaves team T, arrives at team T); team shape when the ball is missing (41% of frames); Smart Tagging team phases as a prior |
 | 4 | **Segmenter** | `possession/segment.py` | minimum-duration / semi-Markov decoding; separate costs for H↔A vs via D; when to write `X` (free inside a possession, costly at a hand-over — see EVALUATION.md) |
-| 5 | **Validation + write-up** | `devset/`, `docs/technical_document.md` | calibrate the degradation to the real ATD's *aggregate* stats (ball-missing rate in crowds/in flight, slot churn); add sample games 1–2 as a second dev game; bootstrap intervals; own the technical document |
+| 5 | **Validation + write-up** | `devset/`, `docs/technical_document.md` | calibrate the degradation to the real ATD's *aggregate* stats (ball-missing rate in crowds/in flight, slot churn), **only once the organisers confirm by email that this isn't "calibrating on provided data"**; add sample games 1–2 as a second dev game; bootstrap intervals; own the technical document |
 
 ## How a change gets in
 

@@ -1,0 +1,8 @@
+{
+  "deadball.w_slow": [0.0, 0.1, 0.15, 0.25],
+  "deadball.slow_speed": [0.5, 0.75, 1.0],
+  "deadball.w_long_missing": [0.25, 0.5],
+  "segment.cost_team_switch": [10],
+  "segment.cost_to_dead": [4],
+  "segment.cost_from_dead": [4]
+}

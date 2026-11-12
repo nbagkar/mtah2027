@@ -25,7 +25,14 @@ def dead_logodds(feat, cfg):
     out += c["w_slow"] * np.clip(slow, -2.0, 2.0)
 
     # Long ball absence is weak evidence of a stoppage (the camera / tracker lost it).
-    long_missing = feat["ball_missing_run"] > c["missing_run_frames"]
+    # With long_missing_needs_slow it counts only as far as the players are also slow: added on
+    # its own, it nearly cancels the running-players term, and the dev score then swings by
+    # 0.08 between neighbouring settings (experiments/LOG.md, 2026-11-12).
+    long_missing = (feat["ball_missing_run"] > c["missing_run_frames"]).astype(float)
+    if c.get("long_missing_needs_slow", False):
+        gate = np.where(np.isnan(ps), 0.0,
+                        np.clip((c["missing_slow_speed"] - ps) / c["slow_scale"], 0.0, 1.0))
+        long_missing = long_missing * gate
     out += c["w_long_missing"] * long_missing
 
     # A moving ball is alive.

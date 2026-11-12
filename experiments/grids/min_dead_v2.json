@@ -1,0 +1,6 @@
+{
+  "segment.min_dead_frames": [1, 25, 50],
+  "segment.cost_team_switch": [5, 6, 8],
+  "segment.cost_to_dead": [4],
+  "segment.cost_from_dead": [4]
+}

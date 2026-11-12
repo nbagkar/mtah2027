@@ -29,9 +29,16 @@ from possession import io, pipeline  # noqa: E402
 
 N_FRAMES = games.GAMES[games.GAME]["n_video_frames"]
 
+# From the challenge's DATA.md: "Home is Barcelona (H), away is Athletic (A)." The Smart Tagging
+# spells the away club "Atletic", so both spellings are accepted.
+EXPECTED_HOME = "Barcelona"
+EXPECTED_AWAY = ("Athletic", "Atletic")
+
 
 def build_labels(cfg):
     meta, raw = games.require(["atd_meta", "atd_raw"])
+    io.check_home_team(meta, EXPECTED_HOME, EXPECTED_AWAY)
+    print("home/away check OK: the tracking's first team is the home side, so H = Barcelona")
     trk = io.load(meta, raw, cache_dir=os.path.join(ROOT, "data", "cache"),
                   pitch=tuple(games.GAMES[games.GAME]["pitch"]))
     if len(trk.frame_id) != N_FRAMES or trk.frame_id[0] != 1:

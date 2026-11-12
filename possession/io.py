@@ -36,6 +36,41 @@ def _strip_ns(root):
     return root
 
 
+def team_names(meta_path):
+    """(home, away) club names as listed in the metadata. Home is the first team, which is
+    the convention read_metadata() uses to assign slots to HOME (0) and AWAY (1)."""
+    root = _strip_ns(ET.parse(meta_path).getroot())
+    names = [(t.findtext("Name") or "").strip() for t in root.iter("Team")]
+    if len(names) != 2:
+        raise ValueError("{}: expected 2 teams, found {}".format(meta_path, len(names)))
+    return names[0], names[1]
+
+
+def check_home_team(meta_path, expected_home, expected_away):
+    """Raise unless the metadata's first team is the expected home side.
+
+    If this were wrong, every H in the submission would really mean A. That would destroy the
+    score, and the validator can't detect it. Each expected name may be a string or a tuple of
+    accepted spellings (the challenge's own files spell Athletic Club two ways).
+    """
+    home, away = team_names(meta_path)
+
+    def norm(s):
+        return "".join(ch for ch in s.lower() if ch.isalnum())
+
+    def matches(name, expected):
+        options = (expected,) if isinstance(expected, str) else expected
+        return any(norm(o) in norm(name) for o in options)
+
+    if not matches(home, expected_home) or not matches(away, expected_away) \
+            or matches(home, expected_away):
+        raise SystemExit(
+            "HOME/AWAY CHECK FAILED: the tracking metadata lists ({!r}, {!r}) but the challenge "
+            "says home is {!r} and away is {!r}. The H and A labels would be swapped, so do not "
+            "submit.".format(home, away, expected_home, expected_away))
+    return home, away
+
+
 def read_metadata(meta_path):
     """(specs, pitch). specs = [(start_frame, end_frame, [team code per slot])]."""
     root = _strip_ns(ET.parse(meta_path).getroot())

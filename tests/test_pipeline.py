@@ -108,3 +108,24 @@ def test_viterbi_switch_cost_suppresses_flicker():
     e[1::2, 1] = 1.0
     path = segment.viterbi(e, np.array([[0, 50, 50], [50, 0, 50], [50, 50, 0]], float))
     assert len(set(path.tolist())) == 1
+
+
+def _meta_with_teams(tmp_path, home, away):
+    meta = tmp_path / "teams.xml"
+    meta.write_text(META.replace("<Name>Home</Name>", "<Name>{}</Name>".format(home))
+                        .replace("<Name>Away</Name>", "<Name>{}</Name>".format(away)))
+    return str(meta)
+
+
+def test_home_team_check_passes_and_accepts_both_spellings(tmp_path):
+    import pytest  # noqa: F401
+    for away in ("Athletic Club", "Atletic Club"):
+        m = _meta_with_teams(tmp_path, "FC Barcelona", away)
+        assert io.check_home_team(m, "Barcelona", ("Athletic", "Atletic"))[0] == "FC Barcelona"
+
+
+def test_home_team_check_catches_a_swap(tmp_path):
+    import pytest
+    m = _meta_with_teams(tmp_path, "Athletic Club", "FC Barcelona")
+    with pytest.raises(SystemExit, match="HOME/AWAY CHECK FAILED"):
+        io.check_home_team(m, "Barcelona", ("Athletic", "Atletic"))

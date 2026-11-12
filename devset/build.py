@@ -1,9 +1,10 @@
-"""Build the team's dev set from Metrica's PUBLIC sample game 3 -- a different match.
+"""Build the team's dev set from Metrica's PUBLIC sample games 1, 2 and 3 -- different matches.
 
 Why this exists: the rules forbid training or tuning on the competition match (including its
-public 5 minutes), so every parameter has to be chosen on other games. Metrica publishes a full
-match in the same EPTS format, with hand-annotated event data, under
-github.com/metrica-sports/sample-data. Human labels on *other* games are explicitly allowed.
+public 5 minutes), so every parameter has to be chosen on other games. Metrica publishes three
+full matches with hand-annotated event data under github.com/metrica-sports/sample-data: game 3
+in the same EPTS format as the competition ATD, games 1-2 as home/away CSVs. Human labels on
+*other* games are explicitly allowed.
 
 Two products, both written under devdata/ (gitignored):
 
@@ -29,8 +30,15 @@ from possession import io  # noqa: E402
 
 RAW = os.path.join(ROOT, "devdata", "raw")
 OUT = os.path.join(ROOT, "devdata")
-BASE = "https://raw.githubusercontent.com/metrica-sports/sample-data/master/data/Sample_Game_3/"
-FILES = ("Sample_Game_3_metadata.xml", "Sample_Game_3_tracking.txt", "Sample_Game_3_events.json")
+BASE = "https://raw.githubusercontent.com/metrica-sports/sample-data/master/data/"
+FILES = {
+    1: ("Sample_Game_1_RawEventsData.csv", "Sample_Game_1_RawTrackingData_Home_Team.csv",
+        "Sample_Game_1_RawTrackingData_Away_Team.csv"),
+    2: ("Sample_Game_2_RawEventsData.csv", "Sample_Game_2_RawTrackingData_Home_Team.csv",
+        "Sample_Game_2_RawTrackingData_Away_Team.csv"),
+    3: ("Sample_Game_3_metadata.xml", "Sample_Game_3_tracking.txt", "Sample_Game_3_events.json"),
+}
+METRICA_PITCH = (105.0, 68.0)  # the sample games' metadata pitch; games 1-2 ship no metadata
 
 # Restart-type events: the ball is dead from the stoppage until one of these starts.
 # A goal kick is annotated as a PASS with subtype GOAL KICK, so any PASS also ends a stoppage.
@@ -43,11 +51,13 @@ TARGET_BALL_MISSING = 0.41
 
 def download():
     os.makedirs(RAW, exist_ok=True)
-    for name in FILES:
-        path = os.path.join(RAW, name)
-        if not os.path.exists(path):
-            print("downloading", name)
-            urllib.request.urlretrieve(BASE + name, path)
+    for game, names in FILES.items():
+        for name in names:
+            path = os.path.join(RAW, name)
+            if not os.path.exists(path):
+                print("downloading", name)
+                urllib.request.urlretrieve(
+                    "{}Sample_Game_{}/{}".format(BASE, game, name), path)
 
 
 def _subtypes(ev):
@@ -89,7 +99,11 @@ def gt_from_events(events, frame_id, home_team_id):
         for ev in evs:
             s = row(ev["start"]["frame"])
             etype = ev["type"]["name"]
-            is_goal = etype == "SHOT" and "GOAL" in _subtypes(ev)
+            # A shot that scores or goes out stops play. Games 1-2 write this into the subtype
+            # ("ON TARGET-GOAL", "OFF TARGET-OUT"); game 3 uses separate events, so this is
+            # unchanged there.
+            tokens = {t for sub in _subtypes(ev) if sub for t in sub.split("-")}
+            is_goal = etype == "SHOT" and bool(tokens & {"GOAL", "OUT"})
             # Fill [cursor, s) with the state that held before this event.
             if s > cursor:
                 labels[cursor:s] = "D" if dead_from is not None or team is None else team
@@ -155,32 +169,92 @@ def _bursty_mask(rng, shape, p_on, mean_len):
     return mask
 
 
+def read_csv_tracking(home_path, away_path, pitch=METRICA_PITCH):
+    """Metrica sample games 1-2: one CSV per team, 3 header rows, x,y per player, ball last."""
+    def load(path):
+        with open(path) as fh:
+            for _ in range(3):
+                fh.readline()
+            arr = np.loadtxt(fh, delimiter=",", dtype=np.float64)
+        return arr
+    home, away = load(home_path), load(away_path)
+    if not np.array_equal(home[:, 1], away[:, 1]):
+        raise ValueError("home and away frames differ")
+    frame_id = home[:, 1].astype(np.int64)
+    hxy, axy = home[:, 3:-2], away[:, 3:-2]
+    L, W = pitch
+    px = np.hstack([hxy[:, 0::2], axy[:, 0::2]]) * L
+    py = np.hstack([hxy[:, 1::2], axy[:, 1::2]]) * W
+    team = np.hstack([np.zeros(hxy.shape[1] // 2, np.int8), np.ones(axy.shape[1] // 2, np.int8)])
+    team = np.tile(team, (len(frame_id), 1))
+    team[np.isnan(px)] = -1  # substitutes not yet (or no longer) on the pitch
+    bx, by = home[:, -2] * L, home[:, -1] * W
+    return io.Tracking(frame_id, px.astype(np.float32), py.astype(np.float32), team,
+                       bx.astype(np.float32), by.astype(np.float32), pitch)
+
+
+def csv_events(path):
+    """Games 1-2 event CSV -> the game-3 JSON event shape gt_from_events reads."""
+    import csv
+    out = []
+    with open(path) as fh:
+        for i, r in enumerate(csv.DictReader(fh)):
+            out.append({
+                "index": i,
+                "team": {"id": r["Team"]} if r["Team"] else None,
+                "type": {"name": r["Type"]},
+                "subtypes": {"name": r["Subtype"]} if r["Subtype"] else None,
+                "period": int(r["Period"]),
+                "start": {"frame": int(r["Start Frame"])},
+                "end": {"frame": int(r["End Frame"]) if r["End Frame"] else None},
+            })
+    return out
+
+
+def load_game(game):
+    paths = [os.path.join(RAW, f) for f in FILES[game]]
+    if game == 3:
+        meta, raw, ev_path = paths
+        trk = io.load(meta, raw, cache_dir=os.path.join(OUT, "cache"))
+        with open(ev_path) as fh:
+            events = json.load(fh)["data"]
+        import xml.etree.ElementTree as ET
+        root = io._strip_ns(ET.parse(meta).getroot())
+        home_id = [t.get("id") for t in root.iter("Team")][0]
+    else:
+        ev_path, home_path, away_path = paths
+        trk = read_csv_tracking(home_path, away_path)
+        events = csv_events(ev_path)
+        home_id = "Home"
+    return trk, events, home_id
+
+
+def save(path, trk):
+    np.savez_compressed(path, **{k: np.asarray(v) for k, v in trk._asdict().items()})
+
+
 def main():
     download()
-    meta, raw, ev_path = (os.path.join(RAW, f) for f in FILES)
-    trk = io.load(meta, raw, cache_dir=os.path.join(OUT, "cache"))
-    with open(ev_path) as fh:
-        events = json.load(fh)["data"]
-    import xml.etree.ElementTree as ET
-    root = io._strip_ns(ET.parse(meta).getroot())
-    home_id = [t.get("id") for t in root.iter("Team")][0]
-
-    gt = gt_from_events(events, trk.frame_id, home_id)
-    graded = gt != "X"
     from possession.pipeline import scorer
     pm = scorer()
-    stats = pm.possession_stats(pm.label_codes(list(gt)), pm.valid_runs(pm.label_codes(list(gt))))
-    print("dev GT: {} graded frames, H {:.0%} A {:.0%} D {:.0%}, {} possessions, mean {:.1f}s".format(
-        graded.sum(), (gt == "H").sum() / graded.sum(), (gt == "A").sum() / graded.sum(),
-        (gt == "D").sum() / graded.sum(), stats["n_spells"], stats["mean_duration_s"]))
-
-    np.savez_compressed(os.path.join(OUT, "game3_gt.npz"), labels=gt)
-    np.savez_compressed(os.path.join(OUT, "game3_clean.npz"),
-                        **{k: np.asarray(v) for k, v in trk._asdict().items()})
-    for seed in DEGRADE_SEEDS:
-        d = degrade(trk, seed, graded)
-        np.savez_compressed(os.path.join(OUT, "game3_degraded_s{}.npz".format(seed)),
-                            **{k: np.asarray(v) for k, v in d._asdict().items()})
+    for game in sorted(FILES):
+        trk, events, home_id = load_game(game)
+        gt = gt_from_events(events, trk.frame_id, home_id)
+        graded = gt != "X"
+        codes = pm.label_codes(list(gt))
+        stats = pm.possession_stats(codes, pm.valid_runs(codes))
+        print("game {}: {} graded frames, H {:.0%} A {:.0%} D {:.0%}, {} possessions, "
+              "mean {:.1f}s".format(game, graded.sum(), (gt == "H").sum() / graded.sum(),
+                                   (gt == "A").sum() / graded.sum(),
+                                   (gt == "D").sum() / graded.sum(), stats["n_spells"],
+                                   stats["mean_duration_s"]))
+        stem = os.path.join(OUT, "game{}".format(game))
+        np.savez_compressed(stem + "_gt.npz", labels=gt)
+        save(stem + "_clean.npz", trk)
+        for seed in DEGRADE_SEEDS:
+            # Seeds differ per game so no two games share a dropout pattern.
+            save(stem + "_degraded_s{}.npz".format(seed), degrade(trk, 100 * game + seed, graded)
+                 if game != 3 else degrade(trk, seed, graded))
     print("wrote", OUT)
 
 

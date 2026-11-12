@@ -35,10 +35,12 @@ def baseline_labels(trk, window, blocks):
 
 
 if __name__ == "__main__":
-    gt, games = dev_games()
-    blocks = pipeline.blocks_from_gt(gt)
+    from scripts.score_dev import summarise
+    games = dev_games()
     for w in (0, 25, 50, 125):
-        res = [pipeline.score(gt, baseline_labels(load_npz(p), w, blocks)) for _, p in games]
-        print("smooth{:<4} clean {:.4f}  deg_mean {:.4f}  poss(deg) {}".format(
-            w, res[0]["spell_f1_mean"], np.mean([r["spell_f1_mean"] for r in res[1:]]),
-            [r["n_pred_spells"] for r in res[1:]]))
+        per = {(g, name): pipeline.score(gt, baseline_labels(load_npz(p), w, blocks))["spell_f1_mean"]
+               for g, gt, blocks, variants in games for name, p in variants}
+        s = summarise(per)
+        print("smooth{:<4} clean {:.4f}  deg_mean {:.4f}  per game (deg) {}".format(
+            w, s["clean"], s["deg_mean"],
+            " ".join("{:.4f}".format(v) for v in s["deg_by_game"].values())))

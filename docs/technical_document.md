@@ -21,11 +21,15 @@ inventing possessions. (Fill in what changed after v0.1 and what each change bou
 
 ## 3. Training and validation data
 
-No labels on the competition match were used for anything. The parameters were chosen on Metrica's public
-sample game 3 (github.com/metrica-sports/sample-data): its hand-annotated event data was turned
-mechanically into per-frame H/A/D labels (`devset/build.py`), and its tracking was degraded to
+No labels on the competition match were used for anything. The parameters were chosen on Metrica's three
+public sample games (github.com/metrica-sports/sample-data): their hand-annotated event data was
+turned mechanically into per-frame H/A/D labels (`devset/build.py`), and their tracking was degraded to
 match the competition ATD (ball missing on ~41% of played frames, in bursts that are more likely in
 crowds and in flight; player dropouts; position jitter).
+
+v0.1 was tuned on game 3 alone. On games 1-2, which it had never seen, it still beat the
+official baseline by about 0.14 spellF1, so the method isn't specific to one match. From v0.2
+on, a change is kept only if it improves the degraded score in every one of the three games.
 
 Dev data source and acknowledgement: Metrica Sports sample data,
 https://github.com/metrica-sports/sample-data. It is used for validation and tuning only, as

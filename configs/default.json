@@ -4,7 +4,7 @@
     "ball_interp_max_gap": 12,
     "speed_smooth": 3,
     "motion_smooth": 25,
-    "motion_lag": 10,
+    "motion_lag": 25,
     "out_margin_m": 0.5,
     "shape_smooth": 25
   },

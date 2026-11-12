@@ -116,7 +116,9 @@ def compute(trk, cfg, fps=25, blocks=None):
 
     # Player motion: median slot speed per frame, then a ~1 s mean. Low = play has stopped.
     # Displacement over `lag` frames, not frame-to-frame: 15 cm of position jitter is ~5 m/s of
-    # fake speed at 1-frame lag and ~0.5 m/s at 10.
+    # fake speed at 1-frame lag, ~0.7 m/s at 10 and ~0.3 m/s at 25. v0.5 uses 25 so that a
+    # noisier tracker can't make standing players look like they are running (at 0.45 m of
+    # jitter a 10-frame lag drops the dev score from 0.53 to 0.38; 25 keeps it at 0.53).
     lag = f["motion_lag"]
     pspeed = np.full(trk.px.shape, np.nan, np.float32)
     ddx = trk.px[lag:] - trk.px[:-lag]

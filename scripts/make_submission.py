@@ -6,9 +6,10 @@
 Deterministic: same data + same config + same pinned deps -> byte-identical file. It prints the
 file's sha256; record it in experiments/LOG.md next to the commit that produced it.
 
---sanity-public scores the file against the public 5 minutes. That is a PIPELINE CHECK only
-(alignment, label meaning). The rules forbid choosing between versions on it -- use
-scripts/score_dev.py for decisions.
+--sanity-public scores the file against the public 5 minutes, purely as an automatic alignment
+check (an off-by-one or swapped H/A shows up as a near-zero score). The organisers' 2026-11-11
+clarification bans fitting, calibrating or tuning on that ground truth. Never change a
+parameter, rule or threshold because of this number. Decisions come from scripts/score_dev.py.
 """
 
 import argparse

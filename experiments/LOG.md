@@ -46,6 +46,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | dead ball | ball speed over ~1 s for the moving-ball cue (`moving_ball_1s`; 0.3 m of ball jitter reads ~5 m/s over 3 frames) and a new ball-still cue (`w_ball_still`), `experiments/grids/stopball_v1.json` | robust 0.4271-0.4902 | 0.57-0.64 | the 1 s speed carries most of it (0.4658 → 0.4857); higher `w_slow` hurts everywhere |
 | 2026-11-12 | dead ball | **v0.6**: `moving_ball_1s` on, `w_ball_still` 0.5 at 1.5 m/s | **robust 0.4902 [0.490 0.487 0.493]** (deg 0.5211, stop 0.4593) | **0.6365** | adopted: robust up in every game (+0.024 / +0.028 / +0.021); deg −0.002 (noise), stop +0.051, clean +0.007. Neighbours `w_ball_still` 0 / 1 score 0.4857 / 0.4868 |
 
+| 2026-11-13 | rules | organisers' reply to our three questions: restated the clarification email, plus "anything that is not explicitly allowed is not permitted". Read as: no statistics of the provided ATD may set anything (dev noise included); Metrica sample data allowed (rights to use, acknowledged); Smart Tagging allowed as input but nothing on it can be tuned. Our dev noise was never set from the ATD; for reference, DATA.md itself publishes "ball visible 56.9% of frames" | — | — | TEAM.md updated |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

@@ -41,6 +41,6 @@ if __name__ == "__main__":
         per = {(g, name): pipeline.score(gt, baseline_labels(load_npz(p), w, blocks))["spell_f1_mean"]
                for g, gt, blocks, variants in games for name, p in variants}
         s = summarise(per)
-        print("smooth{:<4} clean {:.4f}  deg_mean {:.4f}  per game (deg) {}".format(
-            w, s["clean"], s["deg_mean"],
-            " ".join("{:.4f}".format(v) for v in s["deg_by_game"].values())))
+        print("smooth{:<4} robust {:.4f} [{}]  deg {:.4f}  stop {:.4f}  clean {:.4f}".format(
+            w, s["robust"], " ".join("{:.4f}".format(v) for v in s["robust_by_game"].values()),
+            s["deg_mean"], s["stop_mean"], s["clean"]))

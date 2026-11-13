@@ -31,8 +31,22 @@ the challenge repo's docs. These rules follow it.
 
 Allowed, per the same email: automatic checks that use only the provided data (e.g. "does the
 file validate", "are frames aligned"); the video, tracking, smart tagging and homography as
-*inputs*; and publishing intermediate files. If an idea sits near a line, email the organisers
-before building it.
+*inputs*; and publishing intermediate files.
+
+**Asking doesn't help.** On Nov 13 the organisers answered our three questions by restating the
+clarification email, adding: "anything that is not explicitly allowed is not permitted." So:
+
+- **Never compute statistics on the provided tracking to set anything**, including the dev set's
+  noise model. It isn't explicitly allowed. We hedge instead: every change must hold up on both
+  kinds of dev copy and across the jitter stress tests (`experiments/LOG.md`).
+- **Metrica's sample data is fine**: "any dataset you have the rights to use" is explicitly
+  allowed, and its README asks only for responsible use and acknowledgement, which
+  `docs/technical_document.md` gives.
+- **Smart Tagging is an explicitly allowed input**, but any parameter on it would have to be tuned
+  on external data, and our external games have none. Only parameter-free rules, and only with
+  the whole team's agreement.
+
+If an idea isn't clearly covered by the allowed list above, don't build it.
 
 ## Roles
 
@@ -45,7 +59,7 @@ that touch their file.
 | 2 | **Dead ball** | `possession/deadball.py` | Smart Tagging SET PIECES as restart anchors; restart geometry (ball still on a line/corner/centre spot); kickoff detection; ball out of bounds from the homography |
 | 3 | **Possessor** | `possession/possessor.py`, `possession/features.py` | control = same player near the ball for N frames; pass detection (ball leaves team T, arrives at team T); team shape when the ball is missing (41% of frames); Smart Tagging team phases as a prior |
 | 4 | **Segmenter** | `possession/segment.py` | minimum-duration / semi-Markov decoding; separate costs for H↔A vs via D; when to write `X` (free inside a possession, costly at a hand-over — see EVALUATION.md) |
-| 5 | **Validation + write-up** | `devset/`, `docs/technical_document.md` | calibrate the degradation to the real ATD's *aggregate* stats (ball-missing rate in crowds/in flight, slot churn), **only once the organisers confirm by email that this isn't "calibrating on provided data"**; add sample games 1–2 as a second dev game; bootstrap intervals; own the technical document |
+| 5 | **Validation + write-up** | `devset/`, `docs/technical_document.md` | bootstrap intervals on the robust score; own the technical document; Monday's fresh-clone reproducibility check. (Calibrating the dev noise to the real ATD is ruled out, see above.) |
 
 ## How a change gets in
 

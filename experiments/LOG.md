@@ -40,6 +40,12 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 
 | 2026-11-12 | validation | dev set grows from 3 to 6 degraded seeds per game (`DEGRADE_SEEDS`); seeds 0-2 are byte-identical in effect (v0.3 still 0.4598 on them). On 6 seeds: v0.3 0.4601 [0.454 0.447 0.479], v0.4 0.5266 [0.528 0.524 0.528], v0.5 **0.5234 [0.523 0.520 0.528]**, clean unchanged | — | — | one game's seeds span up to 0.06, but the standard error of a game's 6-seed mean is ~0.006: treat per-game changes under ~0.01 as noise. Every number above this line is on 3 seeds; scoring is now ~2x slower |
 
+| 2026-11-12 | validation | invisible-ball loss, measured on v0.5: in live play with the ball invisible, 23% of frames go to D (54% once the ball has been gone > 3 s) and 10% to the wrong team. Cause: Metrica's public tracking drops the ball for 82-99% of dead-ball frames (6-12% of live), so the dev set teaches "ball gone a while = stoppage" | — | — | a data-provider convention the real ATD may not share |
+| 2026-11-12 | validation | new "stopball" dev copies (`devset/build.py`, 3 seeds per game): the ball stays visible through each stoppage, walked from where it was lost to where it reappears. v0.3 / v0.4 / v0.5 score 0.396 / 0.415 / 0.416 on them (prototype seeds) vs ~0.53 on the degraded copies. **Decision metric is now `robust`** = per game, the mean of degraded and stopball | — | — | by team decision; `score_dev.py` and `sweep.py` rank on it |
+| 2026-11-12 | validation | v0.5 on the new metric | robust 0.4658 [0.466 0.459 0.472] (deg 0.5234, stop 0.4081) | 0.6300 | baseline for what follows |
+| 2026-11-12 | dead ball | ball speed over ~1 s for the moving-ball cue (`moving_ball_1s`; 0.3 m of ball jitter reads ~5 m/s over 3 frames) and a new ball-still cue (`w_ball_still`), `experiments/grids/stopball_v1.json` | robust 0.4271-0.4902 | 0.57-0.64 | the 1 s speed carries most of it (0.4658 → 0.4857); higher `w_slow` hurts everywhere |
+| 2026-11-12 | dead ball | **v0.6**: `moving_ball_1s` on, `w_ball_still` 0.5 at 1.5 m/s | **robust 0.4902 [0.490 0.487 0.493]** (deg 0.5211, stop 0.4593) | **0.6365** | adopted: robust up in every game (+0.024 / +0.028 / +0.021); deg −0.002 (noise), stop +0.051, clean +0.007. Neighbours `w_ball_still` 0 / 1 score 0.4857 / 0.4868 |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

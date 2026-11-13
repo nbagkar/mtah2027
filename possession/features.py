@@ -113,6 +113,13 @@ def compute(trk, cfg, fps=25, blocks=None):
     vx = np.gradient(bx) * fps
     vy = np.gradient(by) * fps
     ball_speed = rolling_mean(np.sqrt(vx * vx + vy * vy), f["speed_smooth"])
+    # Ball speed over ~1 s (centred displacement). 0.3 m of ball jitter reads as ~5 m/s over a
+    # couple of frames, so a still ball looks like it's moving; over 1 s it's ~0.4 m/s.
+    h = f.get("ball_speed_half_window", 12)
+    ball_speed_1s = np.full(len(bx), np.nan)
+    if len(bx) > 2 * h:
+        dxs, dys = bx[2 * h:] - bx[:-2 * h], by[2 * h:] - by[:-2 * h]
+        ball_speed_1s[h:len(bx) - h] = np.sqrt(dxs * dxs + dys * dys) * fps / (2 * h)
 
     # Player motion: median slot speed per frame, then a ~1 s mean. Low = play has stopped.
     # Displacement over `lag` frames, not frame-to-frame: 15 cm of position jitter is ~5 m/s of
@@ -162,6 +169,7 @@ def compute(trk, cfg, fps=25, blocks=None):
         "bx": bx, "by": by,
         "d_home": d_home, "d_away": d_away,
         "ball_speed": ball_speed,
+        "ball_speed_1s": ball_speed_1s,
         "player_speed": player_speed,
         "ball_out": ball_out.astype(np.float64),
         "n_players": n_players,

@@ -6,7 +6,7 @@
 `segment.*` keys only change the decoder, so the per-frame evidence is computed once per setting
 of every other key and reused across them; that keeps a large segmenter grid cheap.
 
-Prints the top settings by deg_mean spellF1, with the per-game degraded scores in brackets.
+Prints the top settings by robust spellF1 (mean of degraded and stopball copies), per game in brackets.
 Adopt a winner only if it beats the current config in EVERY game and doesn't hurt `clean` --
 then log it in experiments/LOG.md.
 """
@@ -56,12 +56,11 @@ def run(grid, top=12):
                 lab = segment.decode(p["home_logodds"], p["dead_logodds"], cfg, blocks)
                 per[key] = pipeline.score(gt, lab)["spell_f1_mean"]
             results.append((summarise(per), {**evid, **seg}))
-    results.sort(key=lambda r: -r[0]["deg_mean"])
+    results.sort(key=lambda r: -r[0]["robust"])
     for summ, setting in results[:top]:
-        print("deg {:.4f} clean {:.4f} [{}]  {}".format(
-            summ["deg_mean"], summ["clean"],
-            " ".join("{:.3f}".format(v) for v in summ["deg_by_game"].values()),
-            json.dumps(setting)), flush=True)
+        print("robust {:.4f} [{}]  deg {:.4f} stop {:.4f} clean {:.4f}  {}".format(
+            summ["robust"], " ".join("{:.3f}".format(v) for v in summ["robust_by_game"].values()),
+            summ["deg_mean"], summ["stop_mean"], summ["clean"], json.dumps(setting)), flush=True)
     return results
 
 

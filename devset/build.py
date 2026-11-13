@@ -12,6 +12,10 @@ Two products, both written under devdata/ (gitignored):
   2. Degraded copies of the clean tracking that mimic the competition ATD: the ball removed on
      ~41% of played frames (in bursts, preferentially in crowds and in flight), players dropped
      and jittered. Several seeds, so a parameter has to win on all of them, not on one.
+  3. "stopball" copies: the same, but with the ball kept visible through every stoppage. Metrica's
+     public tracking drops the ball for 82-99% of dead-ball frames, so the degraded copies teach
+     "ball gone a while = stoppage". An automatic tracker may keep seeing the ball at throw-ins
+     and free kicks; these copies are the other extreme, and a setting has to hold up on both.
 
     python devset/build.py            # downloads if needed, ~1-2 min
 """
@@ -45,6 +49,7 @@ METRICA_PITCH = (105.0, 68.0)  # the sample games' metadata pitch; games 1-2 shi
 STOPPAGE_TYPES = {"BALL OUT", "FAULT RECEIVED"}
 CONTROL_TYPES = {"PASS", "CARRY", "RECOVERY", "SET PIECE", "SHOT"}
 
+STOPBALL_SEEDS = (0, 1, 2)
 DEGRADE_SEEDS = tuple(range(6))  # 3 -> 6 on 2026-11-12: one game spread 0.05 across 3 seeds
 TARGET_BALL_MISSING = 0.41
 
@@ -159,6 +164,31 @@ def degrade(trk, seed, played):
     return io.Tracking(trk.frame_id, px, py, trk.team, bx, by, trk.pitch)
 
 
+def ball_through_stoppages(trk, gt):
+    """Keep the ball visible through each dead-ball stretch: where the clean tracking loses it,
+    walk it in a straight line from where it was last seen to where it reappears (the restart
+    spot). A crude stand-in for a tracker that follows the ball while play is stopped."""
+    bx, by = trk.bx.copy(), trk.by.copy()
+    dead = gt == "D"
+    edges = np.diff(np.concatenate(([0], dead.astype(np.int8), [0])))
+    for s, e in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+        nan_in = s + np.flatnonzero(np.isnan(trk.bx[s:e]))
+        if not len(nan_in):
+            continue
+        first = nan_in[0]
+        before = np.flatnonzero(~np.isnan(trk.bx[:first]))
+        after = first + np.flatnonzero(~np.isnan(trk.bx[first:]))
+        if not len(before) or not len(after):
+            continue
+        i0, i1 = before[-1], after[0]
+        idx = np.arange(first, min(e, i1))
+        frac = (idx - i0) / max(1, i1 - i0)
+        fill = np.isnan(bx[idx])
+        bx[idx[fill]] = (trk.bx[i0] + frac * (trk.bx[i1] - trk.bx[i0]))[fill]
+        by[idx[fill]] = (trk.by[i0] + frac * (trk.by[i1] - trk.by[i0]))[fill]
+    return io.Tracking(trk.frame_id, trk.px, trk.py, trk.team, bx, by, trk.pitch)
+
+
 def _bursty_mask(rng, shape, p_on, mean_len):
     T, S = shape
     mask = np.zeros(shape, bool)
@@ -255,6 +285,10 @@ def main():
             # Seeds differ per game so no two games share a dropout pattern.
             save(stem + "_degraded_s{}.npz".format(seed), degrade(trk, 100 * game + seed, graded)
                  if game != 3 else degrade(trk, seed, graded))
+        visible = ball_through_stoppages(trk, gt)
+        for seed in STOPBALL_SEEDS:
+            save(stem + "_stopball_s{}.npz".format(seed),
+                 degrade(visible, 1000 * game + 50 + seed, graded))
     print("wrote", OUT)
 
 

@@ -6,7 +6,7 @@ video frame (`H` / `A` / `D` / `X`) for FC Barcelona – Athletic Club, ranked o
 **Team members: read [TEAM.md](TEAM.md) first.** It has the rules that can get us disqualified,
 who owns what, and the schedule.
 
-## Approach (v0.5)
+## Approach (v0.6)
 
 ```
 ATD tracking ──> features ──┬─> possessor: log-odds HOME vs AWAY per frame
@@ -21,7 +21,7 @@ ATD tracking ──> features ──┬─> possessor: log-odds HOME vs AWAY per
 - **Possessor** — nearest player of each team to the ball (ball gaps ≤ 0.5 s interpolated),
   trusted only when someone is within 2 m and the ball isn't moving faster than 25 m/s. While
   the ball is invisible, a weak ball-free cue speaks instead: the team in possession plays wider.
-- **Dead ball** — ball outside the pitch, ball moving (alive), long ball absence, and players
+- **Dead ball** — ball outside the pitch, ball moving or sitting still over 1 s, long ball absence, and players
   nearly static (speed over 1 s, so tracking jitter can't fake movement). The last is only a light nudge: weighted heavily, it calls stoppages during slow
   build-up play whenever the ball is invisible.
 - **Segmenter** — Viterbi decoding. Its switch penalties are what turn flickering frame evidence
@@ -38,7 +38,18 @@ competition ATD. None was chosen on the competition match. See [devset/build.py]
 | ours, v0.2 | 0.5777 | 0.4522 | 0.455 / 0.436 / 0.466 |
 | ours, v0.3 | 0.5774 | 0.4601 | 0.454 / 0.447 / 0.479 |
 | ours, v0.4 | 0.6306 | 0.5266 | 0.528 / 0.524 / 0.528 |
-| **ours, v0.5** | **0.6300** | **0.5234** | **0.523 / 0.520 / 0.528** |
+| ours, v0.5 | 0.6300 | 0.5234 | 0.523 / 0.520 / 0.528 |
+| ours, v0.6 | 0.6365 | 0.5211 | 0.520 / 0.523 / 0.521 |
+
+**Since v0.6, decisions use `robust` spellF1.** Metrica's public tracking drops the ball during
+nearly every stoppage, which an automatic tracker may not do. So the dev set also has "stopball"
+copies where the ball stays visible through stoppages, and `robust` is, per game, the mean of
+the two kinds of copy:
+
+| robust spellF1 (3 games) | degraded | stopball | robust, per game |
+|---|---|---|---|
+| ours, v0.5 | 0.5234 | 0.4081 | 0.466 / 0.459 / 0.472 |
+| **ours, v0.6** | **0.5211** | **0.4593** | **0.490 / 0.487 / 0.493** |
 
 ## Reproduce
 

@@ -20,9 +20,12 @@ Two products, both written under devdata/ (gitignored):
     python devset/build.py            # downloads if needed, ~1-2 min
 """
 
+import hashlib
 import json
 import os
+import subprocess
 import sys
+import urllib.error
 import urllib.request
 
 import numpy as np
@@ -34,7 +37,21 @@ from possession import io  # noqa: E402
 
 RAW = os.path.join(ROOT, "devdata", "raw")
 OUT = os.path.join(ROOT, "devdata")
-BASE = "https://raw.githubusercontent.com/metrica-sports/sample-data/master/data/"
+# Pinned to an upstream commit, and every file checked against its sha256, so the dev scores
+# can't drift if Metrica's repo changes.
+BASE = ("https://raw.githubusercontent.com/metrica-sports/sample-data/"
+        "e706dd506b360d69d9d123d5b8026e7294b13996/data/")
+SHA256 = {
+    "Sample_Game_1_RawEventsData.csv": "097dda6345e17390dca095331458fd00e47960c480c76f4356fd4edf2575ef05",
+    "Sample_Game_1_RawTrackingData_Away_Team.csv": "0a3df68a92af0290ede472e62de3b6489ddee29223da09bdf0cf76c8e0ab0618",
+    "Sample_Game_1_RawTrackingData_Home_Team.csv": "0a3d0eff7785950379c587d3597b86a2d91c2492281b4652e1abb97c99b6b364",
+    "Sample_Game_2_RawEventsData.csv": "edf31a18599265b77a8baf150f2ce6d89456fb0324b62ea7a391229657a619ba",
+    "Sample_Game_2_RawTrackingData_Away_Team.csv": "aa639f40762eade46c389020fe4458266b5ba14027b1e96e22e75db62803718b",
+    "Sample_Game_2_RawTrackingData_Home_Team.csv": "3f9990ac204b07133e4202441d6fcbb386897c7c7f81e1bc3ce4d35bc8644694",
+    "Sample_Game_3_events.json": "28a53bfe9eaf32535362335553d517cdce0eabb588af6166009081753751f4e0",
+    "Sample_Game_3_metadata.xml": "009c7dcfcb66192014917ca1559c158f612353e390eafb85f8214b06a1c7dec1",
+    "Sample_Game_3_tracking.txt": "570e6ce82c2d93bc92723af331d93c31110bec1d6dc0be07c6d44ca3f981d658",
+}
 FILES = {
     1: ("Sample_Game_1_RawEventsData.csv", "Sample_Game_1_RawTrackingData_Home_Team.csv",
         "Sample_Game_1_RawTrackingData_Away_Team.csv"),
@@ -61,8 +78,21 @@ def download():
             path = os.path.join(RAW, name)
             if not os.path.exists(path):
                 print("downloading", name)
-                urllib.request.urlretrieve(
-                    "{}Sample_Game_{}/{}".format(BASE, game, name), path)
+                _fetch("{}Sample_Game_{}/{}".format(BASE, game, name), path)
+            with open(path, "rb") as fh:
+                got = hashlib.sha256(fh.read()).hexdigest()
+            if got != SHA256[name]:
+                sys.exit("{} has sha256 {}, expected {}; delete it and rerun".format(path, got, SHA256[name]))
+
+
+def _fetch(url, path):
+    tmp = path + ".part"  # a failed download never leaves a truncated file behind
+    try:
+        urllib.request.urlretrieve(url, tmp)
+    except urllib.error.URLError:
+        # python.org's macOS Python ships without root certificates; the system curl has them
+        subprocess.run(["curl", "-fsSL", "-o", tmp, url], check=True)
+    os.replace(tmp, path)
 
 
 def _subtypes(ev):

@@ -48,6 +48,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 
 | 2026-11-13 | rules | organisers' reply to our three questions: restated the clarification email, plus "anything that is not explicitly allowed is not permitted". Read as: no statistics of the provided ATD may set anything (dev noise included); Metrica sample data allowed (rights to use, acknowledged); Smart Tagging allowed as input but nothing on it can be tuned. Our dev noise was never set from the ATD; for reference, DATA.md itself publishes "ball visible 56.9% of frames" | — | — | TEAM.md updated |
 
+| 2026-11-13 | reproducibility | fresh `git clone --recurse-submodules` of fc87096 → `make setup` (pip freeze identical to the working venv) → `make test` 10 passed → `make submission` with an empty parse cache: **sha256 `94681493…` = v0.6, byte-identical**. `make dev` failed on a fresh machine: python.org's macOS Python has no root certificates, so the Metrica sample download died (our checkout never noticed, `devdata/` was already there). Fixed: curl fallback, download pinned to sample-data commit e706dd5 with each file's sha256 checked. Rerun from zero: robust 0.4902 [0.490 0.487 0.493], deg 0.5211, stop 0.4593, clean 0.6365, as logged | — | — | Monday's check on a second laptop still needed (other OS / Python build) |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

@@ -1,60 +1,252 @@
-# <Team name> — technical document
+# BAP PM&T — technical document
 
-*Owner: role 5. Keep it to a few pages. Export to `<team>.pdf` for the form. SUBMISSION.md lists
-what it must cover, and the headings below follow that list.*
+More than a Hack 2027, Phase 1: per-frame possession (`H` / `A` / `D` / `X`) for FC Barcelona –
+Athletic Club. Repository: github.com/nbagkar/mtah2027. Submitted model: **v0.6**
+(`configs/default.json`); submission file sha256
+`9468149381ec534c864f9fe8a3651eba01a04fdb86425f16dbfce19810f447ed`.
 
 ## 1. Approach, and why
 
-Per-frame evidence → 3-state Viterbi segmentation. Why segment rather than smooth: `spellF1`
-counts whole possessions, and a decoder that pays for every switch is the direct way to stop
-inventing possessions. (Fill in what changed after v0.1 and what each change bought on the dev set.)
+```
+tactical ATD ──> features ──┬─> possessor: log-odds HOME vs AWAY, per frame
+                            └─> dead ball: log-odds DEAD vs ALIVE, per frame
+                                      │
+                    3-state Viterbi over {H, A, D}, per graded half,
+                    with a penalty for each kind of switch
+                                      │
+                         frame,label CSV (X outside the graded halves)
+```
+
+**Per-frame evidence.** Two small hand-built models turn the tracking into evidence, each frame on
+its own:
+
+- *Possessor* (`possession/possessor.py`). The distance from the ball to the nearest home player
+  and the nearest away player. The closer team gets the evidence, capped at 5 m of difference.
+  - It counts only when someone is within 2 m of the ball, and more the closer they are.
+  - It counts less the faster the ball moves, and not at all above 25 m/s, because a pass in
+    flight passes close to opponents without changing hands.
+  - Ball gaps of up to 12 frames (0.5 s) are interpolated.
+  - While the ball is still unknown, one weak ball-free cue speaks instead: the team in possession
+    spreads wider. On the three clean dev games the wider team had the ball 81–83% of the time.
+- *Dead ball* (`possession/deadball.py`). Pointing to a stoppage:
+  - the ball is outside the pitch by more than 0.5 m;
+  - a visible ball stays still over about 1 s;
+  - the ball is lost for a stretch longer than 3 s;
+  - the players are nearly still.
+
+  Pointing to live play: the ball moves faster than 3 m/s over about 1 s.
+
+**Segmentation** (`possession/segment.py`). `spellF1` counts whole possessions, so a flickering
+per-frame answer invents many short ones and is punished for each. Instead of smoothing, we decode
+the most likely sequence of states with a Viterbi pass. Each switch has a cost:
+
+- 10 for a direct hand-over between teams;
+- 4 to go into a dead ball;
+- 4 to come out of one.
+
+Those costs are what make the decoder hold a possession through a few frames of contrary evidence.
+This was the largest single gain: the first sweep of the switch costs and the possessor weight
+took the dev score from 0.22 to 0.45.
+
+**Why this rather than something else.**
+- *A learned per-frame classifier* had nothing it could legitimately learn from. Labels for the
+  match itself may not be used, and the only labelled tracking we used is Metrica's three public
+  sample games. That is enough to choose about 30 interpretable parameters. It is not enough to
+  train a model without it also learning Metrica's sample-data conventions.
+- *Working from the video* (detection, ball tracking) would have repeated what the provided ATD
+  already is, in four days, with no way to validate it on external data.
+- *The official smoothing baseline* scores 0.277 on our degraded dev set; v0.6 scores 0.521.
+
+Every parameter lives in one file, `configs/default.json`. Every change, with its before and after
+dev scores, is in `experiments/LOG.md`.
+
+**What changed after v0.1** (dev spellF1 on the degraded copies, mean of 3 games):
+
+| version | change | degraded | clean |
+|---|---|---|---|
+| baseline | official `smooth50` | 0.277 | 0.427 |
+| v0.1 | nearest player + dead-ball cues + Viterbi, switch costs swept | 0.432 | 0.563 |
+| v0.2 | control radius 3 → 2 m, fast-ball cutoff 15 → 25 m/s | 0.452 | 0.578 |
+| v0.3 | team width as evidence, only while the ball is invisible | 0.460 | 0.577 |
+| v0.4 | slow-players term 1.0 → 0.15, long-missing 0.5 → 0.25 (it had been calling stoppages in slow build-up play) | 0.527 | 0.631 |
+| v0.5 | player speed over 25 frames instead of 10, to survive noisier tracking | 0.523 | 0.630 |
+| v0.6 | ball speed over 1 s; a still visible ball counts as a stoppage cue | 0.521 | 0.637 |
+
+v0.5 and v0.6 were not chosen for this column; §3 explains the robustness checks they were chosen
+for.
+
+**Tried and dropped**, each measured on the dev set:
+- a "carry" signal (the nearest player moving with the ball);
+- team width or collective movement on every frame (a smooth signal drowns the ball);
+- a minimum duration for dead spells, decoded exactly;
+- an 80th-percentile player speed instead of the median;
+- smoothing positions before measuring speed;
+- gating the long-missing cue on slow players.
+
+Some of this code is still there, switched off; all of it is logged.
 
 ## 2. Assets used and dropped
 
 | asset | used? | how / why not |
 |---|---|---|
-| tactical ATD | yes | players + ball positions |
-| Smart Tagging | | |
-| homography | | |
-| tactical video | | |
-| broadcast video / ATD | | |
+| tactical ATD (metadata + raw) | **yes**, the only input to the labels | player and ball positions and team membership. We do not read slot identities, because slots swap players. Per-slot speed is measured over 25 frames, and jumps faster than 12 m/s are discarded as identity switches. |
+| tactical video | no | We built no vision pipeline, for the reasons in §1, and never compared our output with the video. |
+| Smart Tagging | no | It is an allowed input, and its set pieces and team-tagged phases are an obvious prior. But none of our external games has Smart Tagging. So any weight on it would have had to be chosen on this match, which the rules forbid. |
+| tactical homography | no | We work in pitch coordinates from the ATD. Ball-out detection uses the pitch size from `games.py`. |
+| broadcast video / ATD / homography | no | Not synchronised with the tactical timeline, and covers less of the match (65.8% usable homography). |
+| challenge repository (`vendor/mtah`, pinned submodule) | yes | The official scorer and validator, unchanged; frame count and pitch size from `games.py`; the graded-half boundaries published in DATA.md (outside them we write `X`). |
 
 ## 3. Training and validation data
 
-No labels on the competition match were used for anything. The parameters were chosen on Metrica's three
-public sample games (github.com/metrica-sports/sample-data): their hand-annotated event data was
-turned mechanically into per-frame H/A/D labels (`devset/build.py`), and their tracking was degraded to
-match the competition ATD (ball missing on ~41% of played frames, in bursts that are more likely in
-crowds and in flight; player dropouts; position jitter).
+**No labelled data from the provided game was used for anything.** That includes the public
+5 minutes of ground truth: we chose no parameter on it and never scored our output on it.
 
-v0.1 was tuned on game 3 alone. On games 1-2, which it had never seen, it still beat the
-official baseline by about 0.14 spellF1, so the method isn't specific to one match. From v0.2
-on, a change is kept only if it improves the degraded score in every one of the three games.
+**The one labelled dataset: Metrica Sports' public sample data**
+(github.com/metrica-sports/sample-data, pinned to commit `e706dd5`, every file checked by sha256).
+- **What it is:** three full professional matches with tracking and event data. The events were
+  annotated by Metrica Sports.
+- **How we labelled it:** `devset/build.py` turns the events into per-frame `H` / `A` / `D` labels
+  mechanically, with no hand edits:
+  - `D` runs from a stoppage event (ball out, foul, goal, or a shot that goes out) to the next
+    restart;
+  - otherwise a frame belongs to the team of the latest controlling event (pass, carry, recovery,
+    set piece, shot);
+  - challenges, ball losses and deflections change nothing.
+- **How much:** 424,886 labelled frames, about 283 minutes:
 
-Dev data source and acknowledgement: Metrica Sports sample data,
-https://github.com/metrica-sports/sample-data. It is used for validation and tuning only, as
-its README asks: responsibly, and with this acknowledgement.
+| game | labelled frames | H / A / D | possessions |
+|---|---|---|---|
+| 1 | 142,074 | 30% / 30% / 41% | 325 |
+| 2 | 140,114 | 36% / 30% / 35% | 304 |
+| 3 | 142,698 | 38% / 35% / 28% | 370 |
 
-Per the organisers' clarification of 2026-11-11: no parameter was trained, fitted, calibrated
-or tuned on the competition match's ground truth or video, and our output was never checked
-against the video.
+As its README asks, we use this data responsibly and acknowledge it here: *tracking and event data
+courtesy of Metrica Sports.*
+
+**Making the sample data look like automatic tracking.** The sample tracking is clean. Each game
+is therefore scored in three versions:
+
+- **Degraded copies** (6 random seeds per game):
+  - ball lost on about 41% of played frames, in bursts that are more likely in crowds and when the
+    ball is fast;
+  - 7% of player positions missing, in bursts of about 2 s;
+  - 0.15 m of player position noise and 0.3 m of ball position noise.
+
+  The 41% is the figure DATA.md publishes for the competition ATD ("41% of the graded" frames).
+  The other values are our own assumptions. We computed no statistic from the competition data to
+  set any of them.
+- **"Stopball" copies** (3 seeds per game). Metrica's public tracking drops the ball on 82–99% of
+  dead-ball frames, against 6–12% of live ones, so a model tuned on it learns that "ball gone a
+  while" means a stoppage. An automatic tracker may instead keep the ball through stoppages. In
+  these copies the ball stays visible through each stoppage, moving in a straight line from where
+  it was lost to where play restarts. They are then degraded as above.
+- **Clean copies**, for reference.
+
+**How a change was accepted.**
+- **v0.1:** tuned on game 3 alone. On games 1–2, which it had never seen, it beat the official
+  baseline by 0.13–0.14 spellF1, so the method is not specific to one match.
+- **v0.2 to v0.5:** a change was kept only if it raised the degraded score in every one of the
+  three games.
+- **From v0.6:** the deciding number is the **robust** score, which is, per game, the mean of the
+  degraded and stopball scores. With 6 seeds, the standard error of one game's mean is about
+  0.006, so per-game changes under 0.01 count as noise.
+- **One exception, decided by the team.** v0.5 lost 0.009 / 0.008 in two games to make the
+  dead-ball cue survive heavier position noise. We re-degraded the dev games with 0.07–0.60 m of
+  noise. At 0.45 m, v0.4 fell from 0.53 to 0.38, while v0.5 held at 0.53.
+
+| v0.6 on the dev set | degraded | stopball | robust | clean |
+|---|---|---|---|---|
+| game 1 / 2 / 3 | 0.520 / 0.523 / 0.521 | 0.461 / 0.452 / 0.465 | 0.490 / 0.487 / 0.493 | 0.643 / 0.636 / 0.630 |
+| mean | **0.521** | **0.459** | **0.490** | **0.637** |
+
+Following the organisers' clarification of 2026-11-11:
+- no parameter was trained, fitted, calibrated or tuned on the competition match's ground truth or
+  video;
+- our output was never checked against the video;
+- no competition data was uploaded to an AI service.
+
+The code was written with the help of an AI coding assistant (Claude, Anthropic). It never saw
+competition data or frame-level output. It saw only dev-set scores and the summary lines of the
+submission script: row count, format check, checksum and label shares.
 
 ## 4. Possession rules implemented
 
-- Loose and contested balls: possession stays with the last team in control. The switch penalty
-  is what enforces this.
-- Restarts:
-- Challenges and deflections:
+- **Loose and contested balls.** Possession stays with the last team in control. Nothing in the
+  evidence says "loose". Near a contested ball both teams are close, so the evidence for either
+  side is small, and the 10-point cost of a hand-over keeps the current team in possession.
+- **Challenges, touches and deflections.** A team takes over only once its evidence has outweighed
+  the switch cost for long enough. So a touch, a deflection or a duel won without control does not
+  move possession. A ball faster than 25 m/s gives no possessor evidence at all, so a pass that
+  flies past an opponent does not count as an interception.
+- **Restarts.** Every stoppage is `D`, and `D` carries no team, as the challenge asks. After a
+  stoppage the decoder may start with either team. The team that restarts is the one whose player
+  is nearest the ball once it moves.
+- **Where `D` starts and ends.** `D` starts when the ball leaves the pitch, or stops dead while the
+  players are nearly still. It ends when the ball moves again over about 1 s and the players speed
+  up. A dead spell may be short: forcing a minimum duration did not help (§1).
+- **`X`** is written only outside the graded halves published in DATA.md, never as an abstention
+  inside them.
 
 ## 5. Handling missing and noisy tracking
 
-- Ball gaps ≤ 12 frames: linear interpolation. Longer gaps: no possessor evidence, so the
-  decoder carries the current state.
-- Identity switches: player speed is measured over a 10-frame lag and teleports over 12 m/s are
-  dropped.
+- **Missing ball (41% of graded frames).**
+  - Gaps up to 0.5 s are interpolated.
+  - In longer gaps there is no possessor evidence, so the decoder keeps the current state.
+  - The team-width cue speaks only there, at a low weight.
+  - A ball lost for more than 3 s is weak evidence of a stoppage. It is deliberately weak (0.25),
+    because the stopball copies showed how much that cue depends on the tracker's conventions.
+- **Position noise.**
+  - Player speed is measured as displacement over 25 frames, not frame to frame. On its own, 0.15
+    m of noise reads as about 5 m/s at a 1-frame lag, but only about 0.3 m/s at 25 frames.
+  - Ball speed for the dead-ball cues is measured over 1 s for the same reason: 0.3 m of ball
+    noise makes a still ball look like it moves at about 5 m/s over 3 frames.
+- **Tracking identities.** Slots appear, vanish and swap players. We use only positions and team
+  membership, take the median speed over all visible slots, and drop jumps over 12 m/s.
+- **Missing players.** Distances and medians use whichever slots are present on each frame.
 
 ## 6. Limitations
 
+- **We cannot see our real-match score.** Every number above comes from Metrica's games, and our
+  degraded copies only imitate automatic tracking. The real ATD's noise level and its handling of
+  the ball during stoppages are unknown to us. They are the two settings our score depended on
+  most.
+- **Different labelling conventions.** Our dev labels come from annotated events. The real ground
+  truth comes from corrected tracking. The two can disagree on exactly when a stoppage starts and
+  when a new team counts as in control.
+- **Stoppages with a visible ball.** These remain the weakest case: 0.459 on the stopball copies,
+  against 0.521 on the degraded ones.
+- **Wrong team in live play.** About 9% of live frames go to the wrong team, whether the ball is
+  visible or not. Possessions of 3–6 s are the largest group we could still recover.
+- **Invisible ball.** With the ball invisible in live play, about 23% of frames are labelled dead
+  (54% once it has been gone for more than 3 s; measured on v0.5).
+- **No player-level reasoning.** We never follow one player over time, so a short possession by
+  one player looks the same as a scramble.
+
+**What we would fix with more time:**
+- *Pass detection:* the ball leaves a player of team T and arrives at a player of team T or of
+  the other team. This is the direct fix for the wrong-team frames.
+- *Restart geometry:* a still ball on a touchline, in a corner arc or on the centre spot, or the
+  kick-off shape with both teams in their own halves.
+- *Smart Tagging set pieces as restart anchors,* once there is an external match with Smart
+  Tagging to validate them on.
+- *More external games,* in more tracking formats, so that fewer of the parameters rest on three
+  matches from one provider.
+
 ## 7. Reproduction
 
-See README → Reproduce. Final file sha256: `…`
+Python 3.11+ (tested on 3.12, macOS); dependencies pinned in `requirements.txt`. About 6 minutes
+end to end.
+
+```bash
+git clone --recurse-submodules https://github.com/nbagkar/mtah2027 && cd mtah2027
+make setup                               # venv, pinned deps, pre-commit data guard
+make test                                # 10 tests on synthetic data
+make dev                                 # download the sample games, build the dev set, score v0.6
+export MTAH_DATA_DIR=/path/to/bundle     # the organisers' data bundle (or unpack into ./data)
+make submission                          # -> submissions/BAP PM&T.csv, validated, sha256 printed
+```
+
+The output is deterministic: the same data, config and pinned dependencies give a byte-identical
+file. On 2026-11-13 a fresh clone reproduced sha256
+`9468149381ec534c864f9fe8a3651eba01a04fdb86425f16dbfce19810f447ed`. In the same run, `make dev`
+printed robust 0.4902, degraded 0.5211, stopball 0.4593 and clean 0.6365.

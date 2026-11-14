@@ -65,7 +65,7 @@ that touch their file.
 
 1. Branch from `main`, change your module.
 2. `python scripts/score_dev.py` before and after. Paste both tables in the PR.
-3. Keep it only if `deg_mean` improves by more than the seed spread and `clean` doesn't drop.
+3. Keep it only if the `robust` score improves in every game. Per-game changes under ~0.01 are noise.
 4. One line in `experiments/LOG.md`: date, who, what, before → after.
 5. CI green (tests + data guard), one review, squash-merge.
 

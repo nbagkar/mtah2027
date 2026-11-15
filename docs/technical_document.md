@@ -178,7 +178,7 @@ regenerate exactly.
 - **We still clear the floor by a wide margin.** The lowest end of any single-game interval, on
   the hardest copies (stopball), is 0.418. The official baseline scores 0.277 on our dev set and
   0.2433 on the real match.
-- **Seeds add little.** The standard error between random copies of one game is 0.004–0.010 for
+- **Seeds add little.** The standard error between random copies of one game is 0.004–0.008 for
   the degraded copies and 0.008–0.021 for the stopball copies, smaller than the possession noise.
 - **What this does not cover:** how far the real tracking differs from our simulated copies
   (§6). That risk is not random, so no bootstrap can measure it.
@@ -264,7 +264,7 @@ end to end.
 ```bash
 git clone --recurse-submodules https://github.com/nbagkar/mtah2027 && cd mtah2027
 make setup                               # venv, pinned deps, pre-commit data guard
-make test                                # 10 tests on synthetic data
+make test                                # 11 tests on synthetic data
 make dev                                 # download the sample games, build the dev set, score v0.6
 make bootstrap                           # 90% intervals on the dev scores (section 3)
 export MTAH_DATA_DIR=/path/to/bundle     # the organisers' data bundle (or unpack into ./data)

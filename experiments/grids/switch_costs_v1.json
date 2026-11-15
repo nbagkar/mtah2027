@@ -1,0 +1,5 @@
+{
+  "segment.cost_team_switch": [6, 8, 10, 14],
+  "segment.cost_to_dead": [3, 4, 5, 6],
+  "segment.cost_from_dead": [3, 4, 5, 6]
+}

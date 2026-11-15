@@ -55,6 +55,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-14 | possessor | (b) gated to frames where the ball moves > 3 or 6 m/s over 1 s, i.e. passes in flight (`bridge_v2.json`, `bridge_v2b.json`) | best 0.4906 [0.491 0.488 0.494] (w 1, M 50, 6 m/s; deg 0.5205, stop 0.4607) | 0.6373 | **not adopted**: +0.001 per game, well under the ~0.01 noise floor. Code in, off (`w_bridge` 0, `bridge_only_moving`); defaults leave every output byte-identical (robust 0.4902) |
 
 | 2026-11-14 | validation | bootstrap intervals on v0.6 (`scripts/bootstrap_dev.py`, official method: resample each game's GT possessions, 1,000 draws, seed 0, 5-95%): robust 0.4902 [0.4699 0.5092]; single game about ±0.035; seed s.e. 0.004-0.021 (Kason) | robust 0.4902 [0.490 0.487 0.493] | 0.6365 | point estimates identical to score_dev.py; added to technical document §3 |
+| 2026-11-15 | segmenter | X at weak hand-overs (`segment.x_handover`, weak_lo 1.0, max_frames 50, bridge_dead 3; `x_handover_v1.json`). The scorer forward-fills X, so this delays a switch until the new team's evidence is strong | 0.5049 [0.511 0.493 0.511] | 0.6683 | up in every game (+0.021 / +0.005 / +0.018), clean +0.032; game 2 gain is within noise. Code merged OFF, proposed for the joint re-sweep |
+| 2026-11-15 | segmenter | switch-cost re-check on v0.6 (`switch_costs_v1.json`). With min_dead 1 a switch through a 1-frame D costs to_dead + from_dead = 8, so team_switch 10 rarely binds. Best: 10 / 6 / 6 | 0.5004 [0.495 0.500 0.506] | 0.6342 | up in every game but clean -0.002, so not adopted alone; sweep together with X at the freeze |
 
 ## Submission files
 

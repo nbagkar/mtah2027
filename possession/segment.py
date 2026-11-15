@@ -131,12 +131,60 @@ def viterbi(e, cost, min_dead=1):
     return path
 
 
+def handover_x_mask(path, home_lo, weak_lo, max_frames, bridge_dead):
+    """Frames to write as X at weak hand-overs. Off unless segment.x_handover is true.
+
+    EVALUATION.md: before spellF1 runs, the scorer forward-fills every X with the last non-X
+    label. So X written at the start of a new possession means "keep the old team until the
+    new team's evidence is strong": it moves the hand-over later, to the first frame where
+    the new team's log-odds reach weak_lo. macroF1 charges every X as a miss.
+
+    A hand-over is a change of live team (H<->A), directly or across at most bridge_dead D
+    frames. Those D frames are written as X too, so the fill carries the old team across them
+    instead of a 1-frame stoppage. At most max_frames weak frames are covered, and never the
+    whole new possession: a short possession that is weak throughout keeps the decoder's guess.
+    """
+    T = len(path)
+    mask = np.zeros(T, dtype=bool)
+    last_live = -1
+    t = 0
+    while t < T:
+        p = int(path[t])
+        if p == D:
+            t += 1
+            continue
+        if last_live >= 0 and int(path[last_live]) != p and t - last_live - 1 <= bridge_dead:
+            end = t
+            while end < T and path[end] == p:
+                end += 1
+            sign = 1.0 if p == H else -1.0
+            u = t
+            while u < end and u - t < max_frames and sign * home_lo[u] < weak_lo:
+                u += 1
+            if t < u < end:
+                mask[last_live + 1:u] = True
+        last_live = t
+        t += 1
+    return mask
+
+
 def decode(home_lo, dead_lo, cfg, blocks):
     """Labels for every row. blocks = [(start, stop)] half-open row spans that are played;
-    rows outside every block get 'X'."""
+    rows outside every block get 'X'. With segment.x_handover, weak hand-overs also get 'X'
+    (see handover_x_mask)."""
+    seg = cfg["segment"]
     labels = np.full(len(home_lo), "X", dtype="<U1")
     cost = transition_costs(cfg)
     e = emissions(home_lo, dead_lo)
+    use_x = bool(seg.get("x_handover", False))
     for a, b in blocks:
-        labels[a:b] = LABELS[viterbi(e[a:b], cost, cfg["segment"].get("min_dead_frames", 1))]
+        path = viterbi(e[a:b], cost, seg.get("min_dead_frames", 1))
+        lab = LABELS[path]
+        if use_x:
+            m = handover_x_mask(path, np.asarray(home_lo[a:b], dtype=float),
+                                float(seg.get("x_weak_lo", 1.0)),
+                                int(seg.get("x_max_frames", 25)),
+                                int(seg.get("x_bridge_dead", 3)))
+            lab[m] = "X"
+        labels[a:b] = lab
     return labels

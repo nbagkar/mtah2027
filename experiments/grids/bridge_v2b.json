@@ -1,0 +1,7 @@
+{
+  "possessor.w_bridge": [1.0, 3.0],
+  "possessor.bridge_max_gap": [50],
+  "possessor.bridge_only_moving": [true],
+  "possessor.bridge_min_speed": [6.0],
+  "segment.cost_team_switch": [10]
+}

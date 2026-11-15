@@ -152,3 +152,24 @@ def test_viterbi_min_dead_matches_brute_force():
         got = tuple(segment.viterbi(e, c, k))
         assert dead_runs_ok(got, k)
         assert abs(total(got, e, c) - max(total(p, e, c) for p in feasible)) < 1e-9
+
+
+def test_control_and_bridge_pass_vs_turnover():
+    from possession.features import control_and_bridge
+    nan = np.nan
+    # home controls 0-4, ball in flight 5-9, home again 10-14 (a pass) -> bridged home;
+    # in flight 15-19, away controls 20-24 (a turnover) -> not bridged.
+    team = np.array([0] * 5 + [nan] * 5 + [0] * 5 + [nan] * 5 + [1] * 5, float)
+    d = np.where(np.isnan(team), 9.0, 1.0)
+    speed = np.zeros(25)
+    ctrl, run, bridge = control_and_bridge(team, d, speed, 2.0, 8.0, 10, None)
+    assert list(ctrl[:5]) == [1] * 5 and list(ctrl[20:]) == [-1] * 5
+    assert run[0] == 5 and run[7] == 0
+    assert list(bridge[5:10]) == [1] * 5
+    assert not bridge[15:20].any() and not bridge[:5].any()
+    # A gap longer than max_gap is not bridged; nor is one that crosses a block boundary.
+    assert not control_and_bridge(team, d, speed, 2.0, 8.0, 4, None)[2].any()
+    assert not control_and_bridge(team, d, speed, 2.0, 8.0, 10, [(0, 8), (8, 25)])[2][5:8].any()
+    # A fast ball is not control.
+    fast = np.full(25, 20.0)
+    assert not control_and_bridge(team, d, fast, 2.0, 8.0, 10, None)[0].any()

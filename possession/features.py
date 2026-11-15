@@ -90,6 +90,40 @@ def team_shape(trk, blocks, smooth, lag, fps=25):
     return width, vx * direction
 
 
+def control_and_bridge(nearest_team, nearest_d, ball_speed, radius, fast, max_gap, blocks):
+    """Who *controls* the ball, and which team it travels between.
+
+    ctrl: +1 home / -1 away on frames where that team's player is nearest, within `radius`
+        metres, and the ball is slower than `fast` m/s; 0 elsewhere (in flight, unseen, loose).
+    ctrl_run: length of the run of identical non-zero ctrl the frame sits in (0 where ctrl is 0),
+        so a model can trust control only once it has lasted N frames.
+    bridge: +1 / -1 on the frames *between* two control episodes of the same team, if the gap is
+        at most `max_gap` frames (a completed pass, a dribble out of reach, a short spell with
+        the ball unseen); 0 elsewhere, including gaps that end with the other team (a turnover:
+        we don't know where it happened). Only gaps inside one block (half) are bridged.
+    """
+    T = len(nearest_team)
+    with np.errstate(invalid="ignore"):
+        ok = (nearest_d < radius) & ~(ball_speed >= fast)  # NaN speed = no veto
+    ctrl = np.where(ok & (nearest_team == 0), 1.0, np.where(ok & (nearest_team == 1), -1.0, 0.0))
+
+    ctrl_run = np.zeros(T)
+    for v in (1.0, -1.0):
+        ctrl_run += run_length_of(ctrl == v)
+
+    bridge = np.zeros(T)
+    for a, b in blocks or [(0, T)]:
+        idx = a + np.flatnonzero(ctrl[a:b] != 0)
+        if len(idx) < 2:
+            continue
+        prev, nxt = idx[:-1], idx[1:]
+        gap = nxt - prev - 1
+        same = (ctrl[prev] == ctrl[nxt]) & (gap > 0) & (gap <= max_gap)
+        for p, n in zip(prev[same], nxt[same]):
+            bridge[p + 1:n] = ctrl[p]
+    return ctrl, ctrl_run, bridge
+
+
 def compute(trk, cfg, fps=25, blocks=None):
     f = cfg["features"]
     L, W = trk.pitch
@@ -163,7 +197,13 @@ def compute(trk, cfg, fps=25, blocks=None):
     width_diff, move = team_shape(trk, blocks, f.get("shape_smooth", 25), lag, fps)
     missing_run = run_length_of(~ball_seen).astype(np.float64)
 
+    pc = cfg["possessor"]
+    ctrl, ctrl_run, bridge = control_and_bridge(
+        nearest_team, nearest_d, ball_speed, pc.get("control_radius_m", 2.0),
+        pc.get("ctrl_fast_ball", 8.0), pc.get("bridge_max_gap", 75), blocks)
+
     return {
+        "ctrl": ctrl, "ctrl_run": ctrl_run, "bridge": bridge,
         "ball_seen": ball_seen.astype(np.float64),
         "ball_ok": ball_ok.astype(np.float64),
         "bx": bx, "by": by,

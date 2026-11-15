@@ -14,6 +14,9 @@ dev:
 baseline:
 	$(PY) -W ignore scripts/baseline_dev.py
 
+bootstrap:
+	$(PY) -W ignore scripts/bootstrap_dev.py
+
 sweep:
 	$(PY) -W ignore scripts/sweep.py
 
@@ -26,4 +29,4 @@ submission:
 guard:
 	bash scripts/check_no_data.sh all
 
-.PHONY: setup dev baseline sweep test submission guard
+.PHONY: setup dev baseline bootstrap sweep test submission guard

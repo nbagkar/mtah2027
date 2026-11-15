@@ -54,6 +54,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-14 | possessor | (b) pass / gap bridge, `w_bridge`: frames between two control episodes of the *same* team, gap ≤ M frames, get evidence for that team; turnovers are not bridged (`bridge_v1.json`, w 0.25-2, M 25/75, switch 8-12) | robust 0.4755-0.4895, below v0.6 at every weight | up to 0.6479 | **rejected**: clean +0.008-0.011, but stopball drops (0.4593 → 0.441-0.459): with the ball visible through a stoppage, the bridge paints stoppages with team evidence and fights the dead-ball cue |
 | 2026-11-14 | possessor | (b) gated to frames where the ball moves > 3 or 6 m/s over 1 s, i.e. passes in flight (`bridge_v2.json`, `bridge_v2b.json`) | best 0.4906 [0.491 0.488 0.494] (w 1, M 50, 6 m/s; deg 0.5205, stop 0.4607) | 0.6373 | **not adopted**: +0.001 per game, well under the ~0.01 noise floor. Code in, off (`w_bridge` 0, `bridge_only_moving`); defaults leave every output byte-identical (robust 0.4902) |
 
+| 2026-11-14 | validation | bootstrap intervals on v0.6 (`scripts/bootstrap_dev.py`, official method: resample each game's GT possessions, 1,000 draws, seed 0, 5-95%): robust 0.4902 [0.4699 0.5092]; single game about ±0.035; seed s.e. 0.004-0.021 (Kason) | robust 0.4902 [0.490 0.487 0.493] | 0.6365 | point estimates identical to score_dev.py; added to technical document §3 |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

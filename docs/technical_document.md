@@ -159,6 +159,30 @@ is therefore scored in three versions:
 | game 1 / 2 / 3 | 0.520 / 0.523 / 0.521 | 0.461 / 0.452 / 0.465 | 0.490 / 0.487 / 0.493 | 0.643 / 0.636 / 0.630 |
 | mean | **0.521** | **0.459** | **0.490** | **0.637** |
 
+**How much of that is luck.** `scripts/bootstrap_dev.py` (`make bootstrap`) puts a 90% interval on
+each number. It uses the official scorer's own method: it resamples each game's real possessions
+with replacement, 1,000 times, and rescores. In every draw, all copies of a game share the same
+resampled possessions, so `robust` is resampled as one number. The seed is fixed, so the intervals
+regenerate exactly.
+
+| v0.6, 90% interval | robust | degraded | stopball | clean |
+|---|---|---|---|---|
+| game 1 | 0.490 [0.456, 0.523] | 0.520 [0.484, 0.555] | 0.461 [0.427, 0.494] | 0.643 [0.604, 0.680] |
+| game 2 | 0.487 [0.454, 0.522] | 0.523 [0.484, 0.560] | 0.452 [0.418, 0.487] | 0.636 [0.590, 0.680] |
+| game 3 | 0.493 [0.460, 0.526] | 0.521 [0.487, 0.558] | 0.465 [0.432, 0.499] | 0.630 [0.595, 0.670] |
+| mean of 3 | **0.490 [0.470, 0.509]** | 0.521 [0.499, 0.542] | 0.459 [0.439, 0.478] | 0.637 [0.613, 0.660] |
+
+- **One match is noisy.** A single game's interval is about ±0.035 wide, close to the official
+  scorer's own noise band of 0.04 for a full match. The real match is one game, so its score could
+  differ from our dev mean by that much from the choice of possessions alone.
+- **We still clear the floor by a wide margin.** The lowest end of any single-game interval, on
+  the hardest copies (stopball), is 0.418. The official baseline scores 0.277 on our dev set and
+  0.2433 on the real match.
+- **Seeds add little.** The standard error between random copies of one game is 0.004–0.008 for
+  the degraded copies and 0.008–0.021 for the stopball copies, smaller than the possession noise.
+- **What this does not cover:** how far the real tracking differs from our simulated copies
+  (§6). That risk is not random, so no bootstrap can measure it.
+
 Following the organisers' clarification of 2026-11-11:
 - no parameter was trained, fitted, calibrated or tuned on the competition match's ground truth or
   video;
@@ -240,8 +264,9 @@ end to end.
 ```bash
 git clone --recurse-submodules https://github.com/nbagkar/mtah2027 && cd mtah2027
 make setup                               # venv, pinned deps, pre-commit data guard
-make test                                # 10 tests on synthetic data
+make test                                # 11 tests on synthetic data
 make dev                                 # download the sample games, build the dev set, score v0.6
+make bootstrap                           # 90% intervals on the dev scores (section 3)
 export MTAH_DATA_DIR=/path/to/bundle     # the organisers' data bundle (or unpack into ./data)
 make submission                          # -> submissions/BAP PM&T.csv, validated, sha256 printed
 ```

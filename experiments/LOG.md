@@ -50,6 +50,8 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 
 | 2026-11-13 | reproducibility | fresh `git clone --recurse-submodules` of fc87096 → `make setup` (pip freeze identical to the working venv) → `make test` 10 passed → `make submission` with an empty parse cache: **sha256 `94681493…` = v0.6, byte-identical**. `make dev` failed on a fresh machine: python.org's macOS Python has no root certificates, so the Metrica sample download died (our checkout never noticed, `devdata/` was already there). Fixed: curl fallback, download pinned to sample-data commit e706dd5 with each file's sha256 checked. Rerun from zero: robust 0.4902 [0.490 0.487 0.493], deg 0.5211, stop 0.4593, clean 0.6365, as logged | — | — | Monday's check on a second laptop still needed (other OS / Python build) |
 
+| 2026-11-14 | validation | bootstrap intervals on v0.6 (`scripts/bootstrap_dev.py`, official method: resample each game's GT possessions, 1,000 draws, seed 0, 5-95%): robust 0.4902 [0.4699 0.5092]; single game about ±0.035; seed s.e. 0.004-0.021 (Kason) | robust 0.4902 [0.490 0.487 0.493] | 0.6365 | point estimates identical to score_dev.py; added to technical document §3 |
+
 ## Submission files
 
 | date | commit | config | sha256 | public-window sanity |

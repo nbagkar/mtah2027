@@ -1,0 +1,9 @@
+{
+  "segment.x_handover": [true],
+  "segment.x_weak_lo": [0.5, 1.0, 2.0, 4.0],
+  "segment.x_max_frames": [12, 25, 50],
+  "segment.x_bridge_dead": [0, 3],
+  "segment.cost_team_switch": [10],
+  "segment.cost_to_dead": [4],
+  "segment.cost_from_dead": [4]
+}

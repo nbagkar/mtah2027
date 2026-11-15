@@ -5,7 +5,9 @@ segmenter turns this into possessions; this module only weighs evidence frame by
 
 Ideas not yet in v0:
   - Smart Tagging phases (Build Up / Progression / ... carry a Team tag) as a soft prior.
-  - pass detection: ball leaves player of team T and arrives at a player of team T.
+
+Pass detection (ball leaves team T, arrives at team T) and sustained control are in, off by
+default: `w_bridge`, `w_ctrl` (features.control_and_bridge).
 """
 
 import numpy as np
@@ -38,6 +40,28 @@ def home_logodds(feat, cfg):
         sign = np.where(feat["nearest_team"] == 0, 1.0, -1.0)
         carrying = np.nan_to_num(close & together, nan=0.0).astype(float)
         out = out + w * sign * carrying
+
+    # Sustained control: a team gets this only once it has been the controlling team (nearest,
+    # within the control radius, ball slow) for ctrl_min_frames in a row, so a pass brushing
+    # past an opponent doesn't count. Off by default (w_ctrl 0).
+    wc = c.get("w_ctrl", 0.0)
+    if wc:
+        held = feat["ctrl_run"] >= c.get("ctrl_min_frames", 10)
+        out = out + wc * feat["ctrl"] * held
+
+    # Pass / gap bridge: the ball leaves team T and the next team to control it is T again,
+    # within bridge_max_gap frames -> the frames in between are T's (a completed pass, or the
+    # ball unseen while T kept it). Speaks where the ball is in flight or invisible, which is
+    # where the wrong-team frames are. Off by default (w_bridge 0).
+    wb = c.get("w_bridge", 0.0)
+    if wb:
+        b = feat["bridge"]
+        # Optionally only where the ball is visibly moving over ~1 s (a pass in flight): a still
+        # or unseen ball between two touches of one team may be a stoppage (foul, throw-in).
+        if c.get("bridge_only_moving", False):
+            with np.errstate(invalid="ignore"):
+                b = b * (feat["ball_speed_1s"] > c.get("bridge_min_speed", 3.0))
+        out = out + wb * b
 
     # Team shape: ball-free, so it also speaks while the ball is invisible (41% of frames).
     # Saturated with tanh so one wide moment can't outvote the ball. Off by default.

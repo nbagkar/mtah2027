@@ -1,0 +1,6 @@
+{
+  "possessor.w_bridge": [0.0, 0.25, 0.5, 1.0, 2.0],
+  "possessor.bridge_max_gap": [25, 75],
+  "possessor.ctrl_fast_ball": [8.0],
+  "segment.cost_team_switch": [8, 10, 12]
+}

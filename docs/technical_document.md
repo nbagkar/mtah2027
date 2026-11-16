@@ -1,9 +1,9 @@
 # BAP PM&T — technical document
 
 More than a Hack 2027, Phase 1: per-frame possession (`H` / `A` / `D` / `X`) for FC Barcelona –
-Athletic Club. Repository: github.com/nbagkar/mtah2027. Submitted model: **v0.6**
+Athletic Club. Repository: github.com/nbagkar/mtah2027. Submitted model: **v0.7**
 (`configs/default.json`); submission file sha256
-`9468149381ec534c864f9fe8a3651eba01a04fdb86425f16dbfce19810f447ed`.
+`bd56dd7c9ff24bac899f2562308b7df886dce1413293d753d608dd59af618e70`.
 
 ## 1. Approach, and why
 
@@ -12,7 +12,8 @@ tactical ATD ──> features ──┬─> possessor: log-odds HOME vs AWAY, pe
                             └─> dead ball: log-odds DEAD vs ALIVE, per frame
                                       │
                     3-state Viterbi over {H, A, D}, per graded half,
-                    with a penalty for each kind of switch
+                    with a penalty for each kind of switch;
+                    a weak hand-over waits for stronger evidence
                                       │
                          frame,label CSV (X outside the graded halves)
 ```
@@ -41,12 +42,21 @@ per-frame answer invents many short ones and is punished for each. Instead of sm
 the most likely sequence of states with a Viterbi pass. Each switch has a cost:
 
 - 10 for a direct hand-over between teams;
-- 4 to go into a dead ball;
-- 4 to come out of one.
+- 10 to go into a dead ball;
+- 10 to come out of one.
 
 Those costs are what make the decoder hold a possession through a few frames of contrary evidence.
 This was the largest single gain: the first sweep of the switch costs and the possessor weight
-took the dev score from 0.22 to 0.45.
+took the dev score from 0.22 to 0.45. Until v0.6 the dead-ball costs were 4 each. That let the
+decoder hand the ball from one team to the other through a one-frame stoppage for less than the
+cost of a direct hand-over, so short false stoppages were cheap.
+
+**Late hand-overs** (v0.7). After decoding, each hand-over from one team to the other is checked.
+If the new team's evidence is still weak there (log-odds under 1.0), the frames up to the point
+where it becomes strong, at most 2 s, keep the previous team. A new possession that stays weak
+from start to finish keeps the decoder's answer, so short real possessions are not erased. On the
+dev set our hand-overs had been coming slightly early, and this moves them to where the new team
+is actually in control.
 
 **Why this rather than something else.**
 - *A learned per-frame classifier* had nothing it could legitimately learn from. Labels for the
@@ -55,7 +65,7 @@ took the dev score from 0.22 to 0.45.
   train a model without it also learning Metrica's sample-data conventions.
 - *Working from the video* (detection, ball tracking) would have repeated what the provided ATD
   already is, in four days, with no way to validate it on external data.
-- *The official smoothing baseline* scores 0.277 on our degraded dev set; v0.6 scores 0.521.
+- *The official smoothing baseline* scores 0.277 on our degraded dev set; v0.7 scores 0.546.
 
 Every parameter lives in one file, `configs/default.json`. Every change, with its before and after
 dev scores, is in `experiments/LOG.md`.
@@ -71,9 +81,10 @@ dev scores, is in `experiments/LOG.md`.
 | v0.4 | slow-players term 1.0 → 0.15, long-missing 0.5 → 0.25 (it had been calling stoppages in slow build-up play) | 0.527 | 0.631 |
 | v0.5 | player speed over 25 frames instead of 10, to survive noisier tracking | 0.523 | 0.630 |
 | v0.6 | ball speed over 1 s; a still visible ball counts as a stoppage cue | 0.521 | 0.637 |
+| v0.7 | late hand-overs; dead-ball costs 4 → 10, from a joint re-sweep of the segmenter | 0.546 | 0.668 |
 
-v0.5 and v0.6 were not chosen for this column; §3 explains the robustness checks they were chosen
-for.
+v0.5 to v0.7 were not chosen for this column; §3 explains the robustness score they were chosen
+on.
 
 **Tried and dropped**, each measured on the dev set:
 - a "carry" signal (the nearest player moving with the ball);
@@ -81,7 +92,12 @@ for.
 - a minimum duration for dead spells, decoded exactly;
 - an 80th-percentile player speed instead of the median;
 - smoothing positions before measuring speed;
-- gating the long-missing cue on slow players.
+- gating the long-missing cue on slow players;
+- pass detection: frames between two touches of the same team, and sustained control (+0.001);
+- restart geometry: a still ball on a touchline, in a corner, in the goal area or on the centre
+  spot (+0.001);
+- writing `X` at weak hand-overs instead of the previous team's label: the scorer fills `X` with
+  the previous label, so spellF1 is identical, but macroF1 counts every `X` as a miss.
 
 Some of this code is still there, switched off; all of it is logged.
 
@@ -150,14 +166,20 @@ is therefore scored in three versions:
 - **From v0.6:** the deciding number is the **robust** score, which is, per game, the mean of the
   degraded and stopball scores. With 6 seeds, the standard error of one game's mean is about
   0.006, so per-game changes under 0.01 count as noise.
+- **v0.7** came from a joint re-sweep of the segmenter after the feature freeze: 81 + 64 + 18
+  settings around the candidate. Every one beat v0.6, and the scores level off once the dead-ball
+  costs reach about 8, so we took a setting from the middle of that flat region rather than the
+  single best one. Paired with v0.6 on the same resampled possessions, the gain is +0.033, 90%
+  [0.026, 0.039], and all three games go up in every one of 1,000 draws.
 - **One exception, decided by the team.** v0.5 lost 0.009 / 0.008 in two games to make the
   dead-ball cue survive heavier position noise. We re-degraded the dev games with 0.07–0.60 m of
   noise. At 0.45 m, v0.4 fell from 0.53 to 0.38, while v0.5 held at 0.53.
 
-| v0.6 on the dev set | degraded | stopball | robust | clean |
+| v0.7 on the dev set | degraded | stopball | robust | clean |
 |---|---|---|---|---|
-| game 1 / 2 / 3 | 0.520 / 0.523 / 0.521 | 0.461 / 0.452 / 0.465 | 0.490 / 0.487 / 0.493 | 0.643 / 0.636 / 0.630 |
-| mean | **0.521** | **0.459** | **0.490** | **0.637** |
+| game 1 / 2 / 3 | 0.551 / 0.544 / 0.543 | 0.498 / 0.490 / 0.510 | 0.525 / 0.517 / 0.527 | 0.694 / 0.647 / 0.661 |
+| mean | **0.546** | **0.500** | **0.523** | **0.668** |
+| v0.6, for comparison | 0.521 | 0.459 | 0.490 | 0.637 |
 
 **How much of that is luck.** `scripts/bootstrap_dev.py` (`make bootstrap`) puts a 90% interval on
 each number. It uses the official scorer's own method: it resamples each game's real possessions
@@ -165,21 +187,21 @@ with replacement, 1,000 times, and rescores. In every draw, all copies of a game
 resampled possessions, so `robust` is resampled as one number. The seed is fixed, so the intervals
 regenerate exactly.
 
-| v0.6, 90% interval | robust | degraded | stopball | clean |
+| v0.7, 90% interval | robust | degraded | stopball | clean |
 |---|---|---|---|---|
-| game 1 | 0.490 [0.456, 0.523] | 0.520 [0.484, 0.555] | 0.461 [0.427, 0.494] | 0.643 [0.604, 0.680] |
-| game 2 | 0.487 [0.454, 0.522] | 0.523 [0.484, 0.560] | 0.452 [0.418, 0.487] | 0.636 [0.590, 0.680] |
-| game 3 | 0.493 [0.460, 0.526] | 0.521 [0.487, 0.558] | 0.465 [0.432, 0.499] | 0.630 [0.595, 0.670] |
-| mean of 3 | **0.490 [0.470, 0.509]** | 0.521 [0.499, 0.542] | 0.459 [0.439, 0.478] | 0.637 [0.613, 0.660] |
+| game 1 | 0.525 [0.488, 0.560] | 0.551 [0.513, 0.587] | 0.498 [0.460, 0.536] | 0.694 [0.654, 0.730] |
+| game 2 | 0.517 [0.480, 0.555] | 0.544 [0.502, 0.586] | 0.490 [0.452, 0.528] | 0.647 [0.601, 0.693] |
+| game 3 | 0.527 [0.492, 0.563] | 0.543 [0.506, 0.581] | 0.510 [0.472, 0.546] | 0.661 [0.624, 0.700] |
+| mean of 3 | **0.523 [0.501, 0.545]** | 0.546 [0.524, 0.569] | 0.500 [0.477, 0.522] | 0.668 [0.643, 0.691] |
 
-- **One match is noisy.** A single game's interval is about ±0.035 wide, close to the official
+- **One match is noisy.** A single game's interval is about ±0.037 wide, close to the official
   scorer's own noise band of 0.04 for a full match. The real match is one game, so its score could
   differ from our dev mean by that much from the choice of possessions alone.
 - **We still clear the floor by a wide margin.** The lowest end of any single-game interval, on
-  the hardest copies (stopball), is 0.418. The official baseline scores 0.277 on our dev set and
+  the hardest copies (stopball), is 0.452. The official baseline scores 0.277 on our dev set and
   0.2433 on the real match.
-- **Seeds add little.** The standard error between random copies of one game is 0.004–0.008 for
-  the degraded copies and 0.008–0.021 for the stopball copies, smaller than the possession noise.
+- **Seeds add little.** The standard error between random copies of one game is 0.004–0.011 for
+  the degraded copies and 0.001–0.021 for the stopball copies, smaller than the possession noise.
 - **What this does not cover:** how far the real tracking differs from our simulated copies
   (§6). That risk is not random, so no bootstrap can measure it.
 
@@ -201,15 +223,19 @@ submission script: row count, format check, checksum and label shares.
 - **Challenges, touches and deflections.** A team takes over only once its evidence has outweighed
   the switch cost for long enough. So a touch, a deflection or a duel won without control does not
   move possession. A ball faster than 25 m/s gives no possessor evidence at all, so a pass that
-  flies past an opponent does not count as an interception.
+  flies past an opponent does not count as an interception. When a hand-over does happen on weak
+  evidence, it is dated to the first frame where the new team's evidence is strong, up to 2 s
+  later (§1).
 - **Restarts.** Every stoppage is `D`, and `D` carries no team, as the challenge asks. After a
   stoppage the decoder may start with either team. The team that restarts is the one whose player
   is nearest the ball once it moves.
 - **Where `D` starts and ends.** `D` starts when the ball leaves the pitch, or stops dead while the
   players are nearly still. It ends when the ball moves again over about 1 s and the players speed
-  up. A dead spell may be short: forcing a minimum duration did not help (§1).
+  up. Going into and out of a dead ball costs 10 each, so a stoppage needs clear evidence, and a
+  momentary one inside a possession is absorbed by it. We set no hard minimum duration: that did
+  not help (§1).
 - **`X`** is written only outside the graded halves published in DATA.md, never as an abstention
-  inside them.
+  inside them. Frames held back at a weak hand-over carry the previous team's label, not `X`.
 
 ## 5. Handling missing and noisy tracking
 
@@ -237,20 +263,25 @@ submission script: row count, format check, checksum and label shares.
 - **Different labelling conventions.** Our dev labels come from annotated events. The real ground
   truth comes from corrected tracking. The two can disagree on exactly when a stoppage starts and
   when a new team counts as in control.
-- **Stoppages with a visible ball.** These remain the weakest case: 0.459 on the stopball copies,
-  against 0.521 on the degraded ones.
-- **Wrong team in live play.** About 9% of live frames go to the wrong team, whether the ball is
-  visible or not. Possessions of 3–6 s are the largest group we could still recover.
+- **Stoppages with a visible ball.** These remain the weakest case: 0.500 on the stopball copies,
+  against 0.546 on the degraded ones.
+- **Fewer, longer possessions.** v0.7 resists switching, so on degraded tracking it finds about 245
+  possessions per game where the labels have 333 (v0.6: 280). Short possessions inside a scramble
+  are merged into their neighbours. On the dev set that trade pays, but a match with many quick
+  turnovers would suffer.
+- **Wrong team in live play.** About 9% of live frames went to the wrong team on v0.6, whether
+  the ball was visible or not. Possessions of 3–6 s are the largest group we could still recover.
 - **Invisible ball.** With the ball invisible in live play, about 23% of frames are labelled dead
   (54% once it has been gone for more than 3 s; measured on v0.5).
 - **No player-level reasoning.** We never follow one player over time, so a short possession by
   one player looks the same as a scramble.
 
 **What we would fix with more time:**
-- *Pass detection:* the ball leaves a player of team T and arrives at a player of team T or of
-  the other team. This is the direct fix for the wrong-team frames.
-- *Restart geometry:* a still ball on a touchline, in a corner arc or on the centre spot, or the
-  kick-off shape with both teams in their own halves.
+- *A learned pass model.* Our hand-built pass cue did not help (§1). The wrong-team frames still
+  need a better account of who receives the ball, which would take more labelled games than three.
+- *Kick-off detection:* both teams in their own halves and the ball on the centre spot. The plain
+  restart-geometry cue did not help, partly because a goalkeeper holds the ball in the goal area
+  in live play.
 - *Smart Tagging set pieces as restart anchors,* once there is an external match with Smart
   Tagging to validate them on.
 - *More external games,* in more tracking formats, so that fewer of the parameters rest on three
@@ -264,14 +295,14 @@ end to end.
 ```bash
 git clone --recurse-submodules https://github.com/nbagkar/mtah2027 && cd mtah2027
 make setup                               # venv, pinned deps, pre-commit data guard
-make test                                # 11 tests on synthetic data
-make dev                                 # download the sample games, build the dev set, score v0.6
+make test                                # 13 tests on synthetic data
+make dev                                 # download the sample games, build the dev set, score v0.7
 make bootstrap                           # 90% intervals on the dev scores (section 3)
 export MTAH_DATA_DIR=/path/to/bundle     # the organisers' data bundle (or unpack into ./data)
 make submission                          # -> submissions/BAP PM&T.csv, validated, sha256 printed
 ```
 
 The output is deterministic: the same data, config and pinned dependencies give a byte-identical
-file. On 2026-11-13 a fresh clone reproduced sha256
-`9468149381ec534c864f9fe8a3651eba01a04fdb86425f16dbfce19810f447ed`. In the same run, `make dev`
-printed robust 0.4902, degraded 0.5211, stopball 0.4593 and clean 0.6365.
+file. v0.7's sha256 is `bd56dd7c9ff24bac899f2562308b7df886dce1413293d753d608dd59af618e70`, and
+`make dev` prints robust 0.5228, degraded 0.5461, stopball 0.4995 and clean 0.6675. (On 2026-11-13
+a fresh clone reproduced the v0.6 file byte for byte, the same way.)

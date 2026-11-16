@@ -260,6 +260,12 @@ submission script: row count, format check, checksum and label shares.
   degraded copies only imitate automatic tracking. The real ATD's noise level and its handling of
   the ball during stoppages are unknown to us. They are the two settings our score depended on
   most.
+- **Very noisy tracking.** We re-noised the dev games to see where v0.7 stops paying. It beats
+  v0.6 by 0.02–0.04 with half or twice our assumed position noise, with the ball lost half or 1.6
+  times as often, with ball-loss bursts twice as long and with 15% of player positions missing. It
+  also holds with four times the noise on the players alone. With three to four times the noise
+  on ball and players together (0.45–0.6 m and 0.9–1.2 m), every version falls to 0.32–0.43, and
+  v0.7 falls 0.01–0.03 further than v0.6.
 - **Different labelling conventions.** Our dev labels come from annotated events. The real ground
   truth comes from corrected tracking. The two can disagree on exactly when a stoppage starts and
   when a new team counts as in control.
@@ -289,7 +295,7 @@ submission script: row count, format check, checksum and label shares.
 
 ## 7. Reproduction
 
-Python 3.11+ (tested on 3.12, macOS); dependencies pinned in `requirements.txt`. About 6 minutes
+Python 3.11+ (tested on 3.12); dependencies pinned in `requirements.txt`. About 6 minutes
 end to end.
 
 ```bash
@@ -306,4 +312,9 @@ The output is deterministic: the same data, config and pinned dependencies give 
 file. v0.7's sha256 is `bd56dd7c9ff24bac899f2562308b7df886dce1413293d753d608dd59af618e70`, and
 `make dev` prints robust 0.5228, degraded 0.5461, stopball 0.4995 and clean 0.6675. On 2026-11-16
 a fresh clone of the repository reproduced all of these: the file byte for byte, the dev scores and
-the bootstrap intervals.
+the bootstrap intervals. A second team member's laptop gave the same sha256.
+
+Across platforms: `scripts/dev_fingerprint.py` hashes the pipeline's labels on all 30 dev copies
+(4.3 million frames). macOS on Intel, Linux on x86-64 and Linux on arm64 give the same hash, so we
+expect the submission file to regenerate identically on Linux too. We could not test that
+directly, because the match data never leaves our laptops.

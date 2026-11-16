@@ -197,3 +197,29 @@ def test_restart_geometry_cue():
     feat["ball_speed_1s"] = np.full(n, 10.0)
     on = dead_logodds(feat, pipeline.with_overrides(cfg, {"deadball.w_restart": 2.0}))
     assert (on == dead_logodds(feat, cfg)).all()
+
+
+def test_handover_previous_label_matches_scorer_fill():
+    # A weak hand-over from H to A: with x_handover the masked frames carry H. Writing X instead
+    # must give the same labels once X is forward-filled, which is what the scorer does.
+    T = 200
+    home = np.full(T, 3.0)
+    home[100:] = -0.5          # A ahead, but weakly at first
+    home[130:] = -3.0
+    dead = np.full(T, -3.0)
+    cfg = pipeline.with_overrides(pipeline.load_config(), {
+        "segment.x_handover": True, "segment.x_weak_lo": 1.0, "segment.x_max_frames": 50,
+        "segment.x_bridge_dead": 3, "segment.cost_team_switch": 2.0})
+    prev = segment.decode(home, dead, cfg, [(0, T)])
+    xs = segment.decode(home, dead, pipeline.with_overrides(cfg, {"segment.x_handover_write": "X"}),
+                        [(0, T)])
+    assert "X" not in set(prev) and "X" in set(xs)
+    filled = xs.copy()
+    for i in range(1, T):
+        if filled[i] == "X":
+            filled[i] = filled[i - 1]
+    assert (filled == prev).all()
+    off = segment.decode(home, dead, pipeline.with_overrides(cfg, {"segment.x_handover": False}),
+                         [(0, T)])
+    first_a = lambda lab: int(np.flatnonzero(lab == "A")[0])
+    assert first_a(prev) > first_a(off)   # the hand-over moved later

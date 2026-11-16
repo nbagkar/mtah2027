@@ -168,10 +168,24 @@ def handover_x_mask(path, home_lo, weak_lo, max_frames, bridge_dead):
     return mask
 
 
+def _carry_previous(lab, mask):
+    """Each masked run takes the label just before it (what the scorer's X fill would do)."""
+    lab = lab.copy()
+    edges = np.diff(np.concatenate(([0], mask.astype(np.int8), [0])))
+    for s, e in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+        if s > 0:  # handover_x_mask never starts a run at the head of a block
+            lab[s:e] = lab[s - 1]
+    return lab
+
+
 def decode(home_lo, dead_lo, cfg, blocks):
     """Labels for every row. blocks = [(start, stop)] half-open row spans that are played;
-    rows outside every block get 'X'. With segment.x_handover, weak hand-overs also get 'X'
-    (see handover_x_mask)."""
+    rows outside every block get 'X'.
+
+    With segment.x_handover, a weak hand-over is moved later (see handover_x_mask). By default
+    (x_handover_write "previous") the masked frames get the previous team's label: the scorer
+    forward-fills X anyway, so spellF1 is identical, macroF1 doesn't charge them as misses, and
+    X stays reserved for frames outside the graded halves. x_handover_write "X" writes X."""
     seg = cfg["segment"]
     labels = np.full(len(home_lo), "X", dtype="<U1")
     cost = transition_costs(cfg)
@@ -185,6 +199,9 @@ def decode(home_lo, dead_lo, cfg, blocks):
                                 float(seg.get("x_weak_lo", 1.0)),
                                 int(seg.get("x_max_frames", 25)),
                                 int(seg.get("x_bridge_dead", 3)))
-            lab[m] = "X"
+            if seg.get("x_handover_write", "previous") == "X":
+                lab[m] = "X"
+            else:
+                lab = _carry_previous(lab, m)
         labels[a:b] = lab
     return labels

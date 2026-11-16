@@ -296,7 +296,7 @@ end to end.
 git clone --recurse-submodules https://github.com/nbagkar/mtah2027 && cd mtah2027
 make setup                               # venv, pinned deps, pre-commit data guard
 make test                                # 13 tests on synthetic data
-make dev                                 # download the sample games, build the dev set, score v0.7
+make dev                                 # build the dev set from the sample games, score it
 make bootstrap                           # 90% intervals on the dev scores (section 3)
 export MTAH_DATA_DIR=/path/to/bundle     # the organisers' data bundle (or unpack into ./data)
 make submission                          # -> submissions/BAP PM&T.csv, validated, sha256 printed
@@ -304,5 +304,6 @@ make submission                          # -> submissions/BAP PM&T.csv, validate
 
 The output is deterministic: the same data, config and pinned dependencies give a byte-identical
 file. v0.7's sha256 is `bd56dd7c9ff24bac899f2562308b7df886dce1413293d753d608dd59af618e70`, and
-`make dev` prints robust 0.5228, degraded 0.5461, stopball 0.4995 and clean 0.6675. (On 2026-11-13
-a fresh clone reproduced the v0.6 file byte for byte, the same way.)
+`make dev` prints robust 0.5228, degraded 0.5461, stopball 0.4995 and clean 0.6675. On 2026-11-16
+a fresh clone of the repository reproduced all of these: the file byte for byte, the dev scores and
+the bootstrap intervals.

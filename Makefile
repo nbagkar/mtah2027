@@ -29,4 +29,10 @@ submission:
 guard:
 	bash scripts/check_no_data.sh all
 
-.PHONY: setup dev baseline bootstrap sweep test submission guard
+# The technical document as a PDF named after the team, for the submission form. Uses its own
+# venv so the pinned pipeline environment is untouched. Needs Google Chrome for printing.
+pdf:
+	test -d .venv-pdf || (python3 -m venv .venv-pdf && .venv-pdf/bin/pip install -q markdown-it-py==3.0.0)
+	.venv-pdf/bin/python scripts/build_pdf.py docs/technical_document.md 'submissions/$(TEAM).pdf'
+
+.PHONY: setup dev baseline bootstrap sweep test submission guard pdf

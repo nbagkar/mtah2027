@@ -21,6 +21,7 @@ devdata/
 
 # environment
 .venv/
+.venv-pdf/
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/

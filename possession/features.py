@@ -219,4 +219,6 @@ def compute(trk, cfg, fps=25, blocks=None):
         "carry_rel_speed": rel_speed,
         "width_diff": width_diff,
         "move": move,
+        # Not a per-frame array: pitch (L, W) in metres, for geometric cues (deadball restarts).
+        "pitch": (float(L), float(W)),
     }

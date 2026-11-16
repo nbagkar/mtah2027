@@ -173,3 +173,27 @@ def test_control_and_bridge_pass_vs_turnover():
     # A fast ball is not control.
     fast = np.full(25, 20.0)
     assert not control_and_bridge(team, d, fast, 2.0, 8.0, 10, None)[0].any()
+
+
+def test_restart_geometry_cue():
+    from possession.deadball import dead_logodds, restart_distance
+    L, W = 105.0, 68.0
+    # touchline, corner, goal area, centre spot, open midfield
+    bx = np.array([40.0, 0.5, 3.0, 52.5, 30.0])
+    by = np.array([0.2, 67.5, 34.0, 34.0, 20.0])
+    d = restart_distance(bx, by, (L, W))
+    assert np.allclose(d[:4], [0.2, 0.5, 0.0, 0.0]) and d[4] > 10
+    assert np.isnan(restart_distance(np.array([np.nan]), np.array([1.0]), (L, W))).all()
+
+    cfg = pipeline.load_config()
+    n = len(bx)
+    feat = {"ball_seen": np.ones(n), "ball_out": np.zeros(n), "player_speed": np.full(n, np.nan),
+            "ball_missing_run": np.zeros(n), "ball_speed": np.zeros(n),
+            "ball_speed_1s": np.zeros(n), "bx": bx, "by": by, "pitch": (L, W)}
+    off = dead_logodds(feat, cfg)
+    on = dead_logodds(feat, pipeline.with_overrides(cfg, {"deadball.w_restart": 2.0}))
+    assert (on[:4] > off[:4] + 1.0).all() and on[4] == off[4]
+    # A moving ball at a restart spot gets nothing.
+    feat["ball_speed_1s"] = np.full(n, 10.0)
+    on = dead_logodds(feat, pipeline.with_overrides(cfg, {"deadball.w_restart": 2.0}))
+    assert (on == dead_logodds(feat, cfg)).all()

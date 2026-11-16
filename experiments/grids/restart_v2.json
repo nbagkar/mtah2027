@@ -1,0 +1,12 @@
+{
+  "deadball.w_restart": [0.0, 0.5, 2.0],
+  "deadball.restart_tol_m": [2.0],
+  "deadball.restart_still_speed": [3.0],
+  "segment.x_handover": [true],
+  "segment.x_weak_lo": [1.0],
+  "segment.x_max_frames": [50],
+  "segment.x_bridge_dead": [3],
+  "segment.cost_team_switch": [10],
+  "segment.cost_to_dead": [4, 6],
+  "segment.cost_from_dead": [4, 6]
+}

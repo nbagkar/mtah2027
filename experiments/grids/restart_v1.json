@@ -1,0 +1,9 @@
+{
+  "deadball.w_restart": [0.0, 0.5, 1.0, 2.0, 4.0],
+  "deadball.restart_tol_m": [1.0, 2.0, 4.0],
+  "deadball.restart_still_speed": [1.5, 3.0],
+  "deadball.w_ball_still": [0.0, 0.5],
+  "segment.cost_team_switch": [10],
+  "segment.cost_to_dead": [4],
+  "segment.cost_from_dead": [4]
+}

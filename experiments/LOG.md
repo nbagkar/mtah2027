@@ -81,3 +81,19 @@ From 2026-11-12 the dev set is three games, and the bracketed numbers are degrad
 | 2026-11-12 | 8bd4aa9 | default.json (v0.5) | `c3822e731621d761db3eaf4863555b97ad3a4ab05ba5a1c6cdf8fbace70139d4` | not run; validates OK, X exactly on the 40,462 ungraded frames, home/away check OK; D share 32.1% |
 | 2026-11-12 | b617d84 | default.json (v0.6) | `9468149381ec534c864f9fe8a3651eba01a04fdb86425f16dbfce19810f447ed` | not run; validates OK, X exactly on the 40,462 ungraded frames, home/away check OK; D share 34.0% of all frames |
 | 2026-11-16 | 10d23f6 | default.json (v0.7) | `bd56dd7c9ff24bac899f2562308b7df886dce1413293d753d608dd59af618e70` | not run; validates OK, X exactly on the 40,462 ungraded frames, home/away check OK; D share 33.3% of all frames; regenerated twice, identical. Merged with CI red: GitHub's checkout failed ("Repository not found") before any code ran; CI's steps passed on a fresh clone of the branch |
+
+## Commit hashes after the 2026-11-17 history rewrite
+
+On 2026-11-17 the commit messages were rewritten to drop AI co-author trailer lines. Files, authors and dates are unchanged, but every commit hash changed. The hashes cited above are the old ones; the same commits now have these hashes:
+
+| old | new |
+|---|---|
+| 10d23f6 | 93cad04 |
+| 292b142 | 914368e |
+| 2bbea96 | 1ff5018 |
+| 3c2e442 | 2521395 |
+| 402cf23 | ee208cd |
+| 5a0d60f | e86b1d7 |
+| 8bd4aa9 | 8095a02 |
+| b617d84 | e51aeb0 |
+| fc87096 | 6b28ddd |
